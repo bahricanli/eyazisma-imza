@@ -86,33 +86,57 @@ func Open(driver, pin string) (*Token, error) {
 		return nil, errors.New("akıllı kart sürücüsü (PKCS#11) bulunamadı; sertifika sağlayıcınızın sürücüsünü kurun ya da yerini --pkcs11 ile gösterin")
 	}
 
+	// Card drivers expect to be called from one thread; the caller signs and
+	// closes on the same goroutine, where Close lets the thread go.
+	runtime.LockOSThread()
+
 	var last error
 
 	for _, path := range found {
+		trace("yükleniyor: %s", path)
 		token, err := open(path, pin)
 		if err == nil {
 			return token, nil
 		}
 
+		trace("açılamadı: %v", err)
+
 		last = err
 
 		var pinError pinError
 		if errors.As(err, &pinError) {
+			runtime.UnlockOSThread()
+
 			return nil, err
 		}
 	}
 
+	runtime.UnlockOSThread()
+
 	return nil, last
+}
+
+// trace reports each step to the driver when EYAZISMA_IMZA_DEBUG is set, to
+// find where a driver fails or crashes.
+func trace(format string, arguments ...any) {
+	if os.Getenv("EYAZISMA_IMZA_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[pkcs11] "+format+"\n", arguments...)
+	}
 }
 
 // initialize starts a driver. Some (AKİS among them) refuse the locking
 // flag the library sends by default and want none.
 func initialize(context *pkcs11.Ctx) error {
+	trace("C_Initialize")
 	err := context.Initialize()
+	trace("C_Initialize: %v", err)
 
 	var code pkcs11.Error
 	if errors.As(err, &code) && code == pkcs11.CKR_ARGUMENTS_BAD {
-		return context.Initialize(pkcs11.InitializeWithFlags(0))
+		err = context.Initialize(pkcs11.InitializeWithFlags(0))
+		trace("C_Initialize (bayraksız): %v", err)
+
+		return err
 	}
 
 	return err
@@ -322,6 +346,7 @@ func (t *Token) Close() {
 	_ = t.context.CloseSession(t.session)
 	_ = t.context.Finalize()
 	t.context.Destroy()
+	runtime.UnlockOSThread()
 }
 
 // Card describes a card a driver sees, with the certificates it shows without the PIN.
@@ -339,7 +364,12 @@ func List(driver string) ([]Card, []error) {
 	var cards []Card
 	var problems []error
 
+	// Card drivers expect to be called from one thread.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	for _, path := range Drivers(driver) {
+		trace("yükleniyor: %s", path)
 		context := pkcs11.New(path)
 		if context == nil {
 			problems = append(problems, fmt.Errorf("sürücü yüklenemedi: %s", path))
@@ -354,26 +384,42 @@ func List(driver string) ([]Card, []error) {
 			continue
 		}
 
-		slots, _ := context.GetSlotList(true)
+		trace("C_GetSlotList")
+		slots, err := context.GetSlotList(true)
+		trace("C_GetSlotList: %v %v", slots, err)
+
 		for _, slot := range slots {
+			trace("C_GetTokenInfo(%d)", slot)
 			info, err := context.GetTokenInfo(slot)
+			trace("C_GetTokenInfo: %q bayraklar %#x %v", info.Label, info.Flags, err)
+
 			if err != nil || info.Flags&pkcs11.CKF_TOKEN_INITIALIZED == 0 {
 				continue
 			}
 
 			card := Card{Driver: path, Label: info.Label, Model: info.Model}
 
-			if session, err := context.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION); err == nil {
+			trace("C_OpenSession(%d)", slot)
+			session, err := context.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION)
+			trace("C_OpenSession: %v", err)
+
+			if err == nil {
+				trace("sertifikalar aranıyor")
 				card.Certificates = certificates(context, session)
+				trace("%d sertifika", len(card.Certificates))
 				card.Chosen, _ = signingCertificate(context, session)
+				trace("C_CloseSession")
 				_ = context.CloseSession(session)
 			}
 
 			cards = append(cards, card)
 		}
 
+		trace("C_Finalize")
 		_ = context.Finalize()
+		trace("sürücü bırakılıyor")
 		context.Destroy()
+		trace("bitti: %s", path)
 	}
 
 	return cards, problems
