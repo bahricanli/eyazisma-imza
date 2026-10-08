@@ -29,7 +29,6 @@ var drivers = map[string][]string{
 	},
 	"darwin": {
 		"/usr/local/lib/libakisp11.dylib",
-		"/usr/local/lib/libeTPkcs11.dylib",
 		"/Library/Frameworks/eToken.framework/Versions/Current/libeToken.dylib",
 		"/usr/local/lib/libaetpkss.dylib",
 		"/usr/local/lib/libOcsPkcs11Wrapper.dylib",
@@ -106,6 +105,19 @@ func Open(driver, pin string) (*Token, error) {
 	return nil, last
 }
 
+// initialize starts a driver. Some (AKİS among them) refuse the locking
+// flag the library sends by default and want none.
+func initialize(context *pkcs11.Ctx) error {
+	err := context.Initialize()
+
+	var code pkcs11.Error
+	if errors.As(err, &code) && code == pkcs11.CKR_ARGUMENTS_BAD {
+		return context.Initialize(pkcs11.InitializeWithFlags(0))
+	}
+
+	return err
+}
+
 type pinError struct{ message string }
 
 func (e pinError) Error() string { return e.message }
@@ -116,7 +128,7 @@ func open(path, pin string) (*Token, error) {
 		return nil, fmt.Errorf("sürücü yüklenemedi: %s", path)
 	}
 
-	if err := context.Initialize(); err != nil {
+	if err := initialize(context); err != nil {
 		context.Destroy()
 
 		return nil, fmt.Errorf("sürücü başlatılamadı (%s): %w", path, err)
@@ -335,7 +347,7 @@ func List(driver string) ([]Card, []error) {
 			continue
 		}
 
-		if err := context.Initialize(); err != nil {
+		if err := initialize(context); err != nil {
 			context.Destroy()
 			problems = append(problems, fmt.Errorf("sürücü başlatılamadı (%s): %w", path, err))
 
