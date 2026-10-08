@@ -308,3 +308,83 @@ func (t *Token) Close() {
 	_ = t.context.Finalize()
 	t.context.Destroy()
 }
+
+// Card describes a card a driver sees, with the certificates it shows without the PIN.
+type Card struct {
+	Driver       string
+	Label        string
+	Model        string
+	Certificates []*x509.Certificate
+	// Chosen is the certificate that would sign; nil when none is visible before login.
+	Chosen *x509.Certificate
+}
+
+// List reports the cards each driver sees. It never logs in, so no PIN is used.
+func List(driver string) ([]Card, []error) {
+	var cards []Card
+	var problems []error
+
+	for _, path := range Drivers(driver) {
+		context := pkcs11.New(path)
+		if context == nil {
+			problems = append(problems, fmt.Errorf("sürücü yüklenemedi: %s", path))
+
+			continue
+		}
+
+		if err := context.Initialize(); err != nil {
+			context.Destroy()
+			problems = append(problems, fmt.Errorf("sürücü başlatılamadı (%s): %w", path, err))
+
+			continue
+		}
+
+		slots, _ := context.GetSlotList(true)
+		for _, slot := range slots {
+			info, err := context.GetTokenInfo(slot)
+			if err != nil || info.Flags&pkcs11.CKF_TOKEN_INITIALIZED == 0 {
+				continue
+			}
+
+			card := Card{Driver: path, Label: info.Label, Model: info.Model}
+
+			if session, err := context.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION); err == nil {
+				card.Certificates = certificates(context, session)
+				card.Chosen, _ = signingCertificate(context, session)
+				_ = context.CloseSession(session)
+			}
+
+			cards = append(cards, card)
+		}
+
+		_ = context.Finalize()
+		context.Destroy()
+	}
+
+	return cards, problems
+}
+
+func certificates(context *pkcs11.Ctx, session pkcs11.SessionHandle) []*x509.Certificate {
+	handles, err := objects(context, session, []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
+		pkcs11.NewAttribute(pkcs11.CKA_CERTIFICATE_TYPE, pkcs11.CKC_X_509),
+	})
+	if err != nil {
+		return nil
+	}
+
+	var found []*x509.Certificate
+
+	for _, handle := range handles {
+		attributes, err := context.GetAttributeValue(session, handle, []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_VALUE, nil)})
+		if err != nil || len(attributes) != 1 {
+			continue
+		}
+
+		if certificate, err := x509.ParseCertificate(attributes[0].Value); err == nil {
+			found = append(found, certificate)
+		}
+	}
+
+	return found
+}

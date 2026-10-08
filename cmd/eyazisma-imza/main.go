@@ -5,6 +5,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"log"
@@ -20,6 +21,7 @@ import (
 	"github.com/bahricanli/eyazisma-imza/internal/engine"
 	"github.com/bahricanli/eyazisma-imza/internal/portal"
 	"github.com/bahricanli/eyazisma-imza/internal/server"
+	"github.com/bahricanli/eyazisma-imza/internal/token"
 	"golang.org/x/term"
 )
 
@@ -35,11 +37,18 @@ func main() {
 	signFile := flag.String("sign", "", "portal olmadan sınama: bu dosyayı karttaki e-imzayla imzala ve çık")
 	output := flag.String("out", "", "--sign ile: imzanın yazılacağı dosya (varsayılan: <dosya>.imz)")
 	timestampURL := flag.String("tsa", "", "--sign ile: zaman damgası hizmetinin adresi; verilmezse imza zaman damgasız atılır")
+	listCards := flag.Bool("cards", false, "takılı kartları ve PIN'siz görünen sertifikaları listele ve çık (PIN kullanılmaz)")
 	showVersion := flag.Bool("version", false, "sürümü yaz ve çık")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Println(version)
+
+		return
+	}
+
+	if *listCards {
+		cards(*driver)
 
 		return
 	}
@@ -134,6 +143,43 @@ func signOnce(signer engine.Engine, input, output, timestampURL string) error {
 	fmt.Printf("İmza yazıldı: %s (%d bayt, düzey %s)\n", output, len(signature), reached)
 
 	return nil
+}
+
+// cards prints what the drivers see, without logging in to any card.
+func cards(driver string) {
+	found, problems := token.List(driver)
+
+	fmt.Println("Bulunan sürücüler:", strings.Join(token.Drivers(driver), ", "))
+
+	for _, problem := range problems {
+		fmt.Println("Uyarı:", problem)
+	}
+
+	if len(found) == 0 {
+		fmt.Println("Hiçbir sürücü takılı bir kart görmüyor.")
+
+		return
+	}
+
+	for _, card := range found {
+		fmt.Printf("\nKart: %s (%s)\nSürücü: %s\n", strings.TrimSpace(card.Label), strings.TrimSpace(card.Model), card.Driver)
+
+		if len(card.Certificates) == 0 {
+			fmt.Println("  PIN girilmeden görünen sertifika yok.")
+		}
+
+		for _, certificate := range card.Certificates {
+			mark := " "
+			if card.Chosen != nil && certificate.Equal(card.Chosen) {
+				mark = "*"
+			}
+
+			fmt.Printf("  %s %s | veren: %s | bitiş: %s | CA: %t | inkâr edilemezlik: %t\n", mark, certificate.Subject.CommonName, certificate.Issuer.CommonName,
+				certificate.NotAfter.Format("02.01.2006"), certificate.IsCA, certificate.KeyUsage&x509.KeyUsageContentCommitment != 0)
+		}
+	}
+
+	fmt.Println("\n* imzada kullanılacak sertifika")
 }
 
 // readPIN asks for the PIN without showing it; when the input is not a terminal it reads a line.
