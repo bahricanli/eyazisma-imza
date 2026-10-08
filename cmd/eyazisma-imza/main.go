@@ -33,7 +33,7 @@ func main() {
 	configPath := flag.String("config", "", "ayar dosyası (varsayılan: kullanıcının ayar dizini)")
 	noBrowser := flag.Bool("no-browser", false, "sayfayı tarayıcıda açma")
 	allowPFX := flag.Bool("pfx", false, "sınama için sertifikanın dosyadan yüklenmesine izin ver")
-	driver := flag.String("pkcs11", os.Getenv("EYAZISMA_IMZA_PKCS11"), "akıllı kart sürücüsünün (PKCS#11) yolu; boşsa bilinen yerler denenir")
+	driver := flag.String("pkcs11", os.Getenv("EYAZISMA_IMZA_PKCS11"), "yalnız bu akıllı kart sürücüsünü (PKCS#11) kullan; boşsa bilinen yerlerdekiler denenir")
 	signFile := flag.String("sign", "", "portal olmadan sınama: bu dosyayı karttaki e-imzayla imzala ve çık")
 	output := flag.String("out", "", "--sign ile: imzanın yazılacağı dosya (varsayılan: <dosya>.imz)")
 	timestampURL := flag.String("tsa", "", "--sign ile: zaman damgası hizmetinin adresi; verilmezse imza zaman damgasız atılır")

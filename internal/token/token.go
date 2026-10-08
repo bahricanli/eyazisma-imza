@@ -59,14 +59,17 @@ type Token struct {
 	key     pkcs11.ObjectHandle
 }
 
-// Drivers lists the drivers present on this computer, the given one first.
-func Drivers(preferred string) []string {
+// Drivers lists the drivers to try: the given one alone, or else the usual
+// ones present on this computer.
+func Drivers(only string) []string {
+	candidates := drivers[runtime.GOOS]
+	if only != "" {
+		candidates = []string{only}
+	}
+
 	var found []string
 
-	for _, path := range append([]string{preferred}, drivers[runtime.GOOS]...) {
-		if path == "" {
-			continue
-		}
+	for _, path := range candidates {
 		if _, err := os.Stat(path); err == nil {
 			found = append(found, path)
 		}
