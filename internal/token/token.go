@@ -124,22 +124,39 @@ func trace(format string, arguments ...any) {
 	}
 }
 
-// initialize starts a driver. Some (AKİS among them) refuse the locking
-// flag the library sends by default and want none.
-func initialize(context *pkcs11.Ctx) error {
+// initialize starts a driver. Drivers disagree on the arguments: some refuse
+// the locking flag the library sends by default, and AKİS wants no arguments
+// at all, which the library cannot send, so the driver is called directly.
+func initialize(context *pkcs11.Ctx, path string) error {
 	trace("C_Initialize")
 	err := context.Initialize()
 	trace("C_Initialize: %v", err)
 
-	var code pkcs11.Error
-	if errors.As(err, &code) && code == pkcs11.CKR_ARGUMENTS_BAD {
-		err = context.Initialize(pkcs11.InitializeWithFlags(0))
-		trace("C_Initialize (bayraksız): %v", err)
-
+	if !isCode(err, pkcs11.CKR_ARGUMENTS_BAD) {
 		return err
 	}
 
-	return err
+	err = context.Initialize(pkcs11.InitializeWithFlags(0))
+	trace("C_Initialize (bayraksız): %v", err)
+
+	if !isCode(err, pkcs11.CKR_ARGUMENTS_BAD) {
+		return err
+	}
+
+	result := initializeWithoutArguments(path)
+	trace("C_Initialize (argümansız): %#x", result)
+
+	if result != 0 && result != pkcs11.CKR_CRYPTOKI_ALREADY_INITIALIZED {
+		return pkcs11.Error(result)
+	}
+
+	return nil
+}
+
+func isCode(err error, code uint) bool {
+	var found pkcs11.Error
+
+	return errors.As(err, &found) && uint(found) == code
 }
 
 type pinError struct{ message string }
@@ -152,7 +169,7 @@ func open(path, pin string) (*Token, error) {
 		return nil, fmt.Errorf("sürücü yüklenemedi: %s", path)
 	}
 
-	if err := initialize(context); err != nil {
+	if err := initialize(context, path); err != nil {
 		context.Destroy()
 
 		return nil, fmt.Errorf("sürücü başlatılamadı (%s): %w", path, err)
@@ -377,7 +394,7 @@ func List(driver string) ([]Card, []error) {
 			continue
 		}
 
-		if err := initialize(context); err != nil {
+		if err := initialize(context, path); err != nil {
 			context.Destroy()
 			problems = append(problems, fmt.Errorf("sürücü başlatılamadı (%s): %w", path, err))
 
