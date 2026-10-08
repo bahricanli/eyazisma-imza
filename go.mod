@@ -1,17 +1,12 @@
 module github.com/bahricanli/eyazisma-imza
 
-go 1.26.1
+go 1.27
 
 require (
-	github.com/kilimcininkoroglu/eimza-go v0.0.0
-	software.sslmate.com/src/go-pkcs12 v0.7.1
+	github.com/digitorus/pkcs7 v0.0.0-20260914070511-d678ea5ea03f
+	github.com/digitorus/timestamp v0.0.0-20260914073129-b4b58b92aa51
+	github.com/miekg/pkcs11 v1.1.2
+	software.sslmate.com/src/go-pkcs12 v0.7.3
 )
 
-require (
-	github.com/KilimcininKorOglu/kamusm-go v1.2.0 // indirect
-	github.com/miekg/pkcs11 v1.1.2 // indirect
-	go.mozilla.org/pkcs7 v0.9.0 // indirect
-	golang.org/x/crypto v0.50.0 // indirect
-)
-
-replace github.com/kilimcininkoroglu/eimza-go => ./third_party/eimza-go/eimza-go
+require golang.org/x/crypto v0.57.0 // indirect

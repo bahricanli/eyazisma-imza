@@ -28,6 +28,7 @@ func main() {
 	configPath := flag.String("config", "", "ayar dosyası (varsayılan: kullanıcının ayar dizini)")
 	noBrowser := flag.Bool("no-browser", false, "sayfayı tarayıcıda açma")
 	allowPFX := flag.Bool("pfx", false, "sınama için sertifikanın dosyadan yüklenmesine izin ver")
+	driver := flag.String("pkcs11", os.Getenv("EYAZISMA_IMZA_PKCS11"), "akıllı kart sürücüsünün (PKCS#11) yolu; boşsa bilinen yerler denenir")
 	showVersion := flag.Bool("version", false, "sürümü yaz ve çık")
 	flag.Parse()
 
@@ -50,7 +51,7 @@ func main() {
 		log.Fatalf("ayar dosyası okunamadı (%s): %v", path, err)
 	}
 
-	bridge := &server.Server{Engine: engine.Eimza{}, Portal: portal.New(), Config: settings, AllowPFX: *allowPFX, Version: version}
+	bridge := &server.Server{Engine: engine.Native{Driver: *driver}, Portal: portal.New(), Config: settings, AllowPFX: *allowPFX, Version: version}
 
 	// Only this computer can reach the bridge.
 	address := fmt.Sprintf("127.0.0.1:%d", *port)

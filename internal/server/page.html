@@ -120,7 +120,7 @@
             $('s-subject').textContent = data.subject;
             $('s-step').textContent = data.step_label;
             $('s-filename').textContent = data.filename;
-            $('s-timestamp').textContent = data.timestamp ? 'Alınacak (' + data.profile + ' profili)' : 'Tanımlı değil; imza zaman damgasız atılacak';
+            $('s-timestamp').textContent = data.timestamp ? 'Alınacak' : 'Tanımlı değil; imza zaman damgasız atılacak';
             show('step-sign');
             $('pin').focus();
         }).catch(function (error) { notice(error.message, false); });
@@ -146,7 +146,10 @@
         ready.then(function () { return call('/api/sign', body); }).then(function (data) {
             $('pin').value = ''; $('password').value = ''; $('link').value = '';
             show('step-link');
-            notice(data.message + ' İmzalayan: ' + data.signer + '.' + (data.complete ? ' Paket tamamlandı.' : ''), true);
+            var levels = { BES: 'zaman damgasız (BES)', T: 'zaman damgalı (T)', XL: 'uzun dönemli (XL)', A: 'arşiv (A)' };
+            var text = data.message + ' İmzalayan: ' + data.signer + '. İmza düzeyi: ' + (levels[data.profile] || data.profile) + '.';
+            if (data.asked && data.asked !== data.profile) { text += ' Portal ' + data.asked + ' düzeyini istemişti; uygulama henüz o düzeyde imza atamıyor.'; }
+            notice(text + (data.complete ? ' Paket tamamlandı.' : ''), true);
         }).catch(function (error) { notice(error.message, false); }).then(function () { $('sign').disabled = false; });
     }
 

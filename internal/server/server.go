@@ -177,17 +177,12 @@ func (s *Server) sign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profile := engine.Profile(session.Profile)
 	var timestamp *engine.Timestamp
-
 	if session.Timestamp != nil && session.Timestamp.URL != "" {
 		timestamp = &engine.Timestamp{URL: session.Timestamp.URL, User: session.Timestamp.User, Password: session.Timestamp.Password}
-	} else {
-		// Without a time-stamp service the portal gets a plain signature.
-		profile = engine.ProfileBES
 	}
 
-	signature, err := s.Engine.Sign(document, key, profile, timestamp)
+	signature, reached, err := s.Engine.Sign(document, key, engine.Profile(session.Profile), timestamp)
 	if err != nil {
 		fail(w, http.StatusUnprocessableEntity, err.Error())
 
@@ -205,7 +200,8 @@ func (s *Server) sign(w http.ResponseWriter, r *http.Request) {
 		"message":  result.Message,
 		"complete": result.Complete,
 		"signer":   key.Certificate.Subject.CommonName,
-		"profile":  string(profile),
+		"profile":  string(reached),
+		"asked":    session.Profile,
 	})
 }
 

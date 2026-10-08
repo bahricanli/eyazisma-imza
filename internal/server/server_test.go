@@ -2,14 +2,9 @@ package server
 
 import (
 	"bytes"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -17,11 +12,12 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/bahricanli/eyazisma-imza/internal/config"
 	"github.com/bahricanli/eyazisma-imza/internal/engine"
 	"github.com/bahricanli/eyazisma-imza/internal/portal"
+	"github.com/bahricanli/eyazisma-imza/internal/testpki"
+	"github.com/digitorus/pkcs7"
 	pkcs12 "software.sslmate.com/src/go-pkcs12"
 )
 
@@ -76,25 +72,7 @@ func (p *fakePortal) handler() http.Handler {
 func pfx(t *testing.T) string {
 	t.Helper()
 
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	template := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: "Ayşe Yılmaz"},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageContentCommitment,
-	}
-
-	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	certificate, _ := x509.ParseCertificate(der)
+	certificate, key := testpki.Certificate(t, "Ayşe Yılmaz", false)
 
 	data, err := pkcs12.Legacy.Encode(key, certificate, nil, "parola")
 	if err != nil {
@@ -118,7 +96,7 @@ func start(t *testing.T, allowPFX bool) *bridge {
 		t.Fatal(err)
 	}
 
-	handler := (&Server{Engine: engine.Eimza{}, Portal: portal.New(), Config: settings, AllowPFX: allowPFX, Version: "test"}).Handler()
+	handler := (&Server{Engine: engine.Native{}, Portal: portal.New(), Config: settings, AllowPFX: allowPFX, Version: "test"}).Handler()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 
@@ -211,8 +189,9 @@ func TestSigningThroughThePortal(t *testing.T) {
 	}
 }
 
-func TestLongTermProfileNeedsAReachableTimestampService(t *testing.T) {
-	fake := &fakePortal{timestamp: map[string]string{"url": "http://127.0.0.1:1/zd", "user": "1234", "password": "gizli"}}
+func TestSignatureIsTimestampedWhenThePortalLendsAService(t *testing.T) {
+	service := testpki.TimestampService(t, "1234", "gizli")
+	fake := &fakePortal{timestamp: map[string]string{"url": service.URL, "user": "1234", "password": "gizli"}}
 	portalServer := httptest.NewServer(fake.handler())
 	defer portalServer.Close()
 
@@ -224,9 +203,29 @@ func TestLongTermProfileNeedsAReachableTimestampService(t *testing.T) {
 		t.Fatalf("oturum bilgisi: %v", result)
 	}
 
-	// The signature is not sent to the portal when it cannot be upgraded.
+	// The long-term level is not built yet: the signature is time-stamped and the page is told so.
 	status, result := b.call("/api/sign", map[string]string{"link": link, "source": "pfx", "pfx": pfx(t), "password": "parola"}, nil)
-	if status != http.StatusUnprocessableEntity || !strings.Contains(result["message"].(string), "XL") || fake.signature != nil {
+	if status != http.StatusOK || result["profile"] != "T" || result["asked"] != "XL" {
+		t.Fatalf("imza: %d %v", status, result)
+	}
+
+	parsed, err := pkcs7.Parse(fake.signature)
+	if err != nil || parsed.Verify() != nil || len(parsed.Signers[0].UnauthenticatedAttributes) != 1 {
+		t.Fatalf("portala giden imza zaman damgalı değil: %v", err)
+	}
+}
+
+func TestSignatureIsNotSentWhenTheTimestampServiceFails(t *testing.T) {
+	fake := &fakePortal{timestamp: map[string]string{"url": "http://127.0.0.1:1/zd", "user": "1234", "password": "gizli"}}
+	portalServer := httptest.NewServer(fake.handler())
+	defer portalServer.Close()
+
+	b := start(t, true)
+	link := portalServer.URL + "/imza/dogru"
+	b.call("/api/trust", map[string]string{"link": link}, nil)
+
+	status, result := b.call("/api/sign", map[string]string{"link": link, "source": "pfx", "pfx": pfx(t), "password": "parola"}, nil)
+	if status != http.StatusUnprocessableEntity || !strings.Contains(result["message"].(string), "zaman damgası") || fake.signature != nil {
 		t.Fatalf("zaman damgası alınamadan imza gönderildi: %d %v", status, result)
 	}
 }

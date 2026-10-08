@@ -2,8 +2,18 @@
 
 Dernek portalının yazışma modülü için **imza köprüsü**: imzacının bilgisayarında çalışır, portalın verdiği özeti akıllı kart ya da token'daki e-imzayla imzalar ve imzayı portala geri gönderir.
 
-> **Durum: deneysel, gerçek kullanıma hazır değil.**
-> Köprünün kendisi (portal bağlantısı, yerel sayfa, güvenlik denetimleri) çalışıyor ve sınanıyor. İmza motoru olarak kullanılan [eimza-go](https://github.com/KilimcininKorOglu/eimza-go) ise attığı imzaya CAdES'in zorunlu tuttuğu "signing-certificate-v2" özniteliğini eklemiyor; çıkan imza geçerli bir CMS imzası ama CAdES-BES değil. Uzun dönem profilleri (CAdES-X Long, CAdES-A) ve akıllı kart erişimi gerçek sertifikayla hiç denenmedi. Motor değiştirilene ya da düzeltilene kadar üretilen imzalar resmî doğrulamadan geçmeyebilir.
+> **Durum: deneysel.** Gerçek bir e-imza kartıyla ve resmî bir doğrulayıcıyla henüz denenmedi.
+
+| Ne | Durum |
+|---|---|
+| CAdES-BES imza (içerik imzanın içinde, `signing-certificate-v2` ile) | Var; OpenSSL ve ikinci bir CMS kütüphanesiyle doğrulanıyor |
+| Zaman damgalı imza (CAdES-T, RFC 3161) | Var; sınama zaman damgası hizmetiyle doğrulanıyor |
+| Akıllı kart / token (PKCS#11), RSA ve eliptik eğri | Var; yazılımsal token (SoftHSM) ile sınanıyor, gerçek kartla denenmedi |
+| Uzun dönemli imza (CAdES-X Long) ve arşiv imzası (CAdES-A) | **Yok.** e-Yazışma rehberi imzada X Long, mühürde A ister |
+| İmza ilkesi (profil) tanımlayıcısı | Yok |
+| Kamu SM zaman damgası hizmetinin kendine özgü kimlik doğrulaması | Yok; HTTP temel kimlik doğrulaması kullanan hizmetler desteklenir |
+
+Portal uzun dönemli imza istediğinde uygulama ulaşabildiği en yüksek düzeyde (zaman damgalı) imza atar ve bunu imzacıya söyler.
 
 ## Nasıl çalışır
 
@@ -26,9 +36,10 @@ Uygulama `http://127.0.0.1:51515/` adresinde açılır ve tarayıcıda sayfasın
 | `--port 51515` | Dinlenecek port; portal varsayılanı bekler |
 | `--no-browser` | Sayfayı kendiliğinden açma |
 | `--config <dosya>` | Güvenilen portalların tutulduğu dosya |
+| `--pkcs11 <dosya>` | Akıllı kart sürücüsünün yolu; verilmezse bilinen yerler denenir (`EYAZISMA_IMZA_PKCS11` ile de verilebilir) |
 | `--pfx` | Sınama için sertifikanın dosyadan (PFX) yüklenmesine izin ver |
 
-Akıllı kart için sertifika sağlayıcısının sürücüsü (PKCS#11) kurulu olmalıdır.
+Akıllı kart için sertifika sağlayıcısının sürücüsü (PKCS#11) kurulu olmalıdır. Kartta birden fazla sertifika varsa belge imzalamaya ayrılmış olan (inkâr edilemezlik) seçilir. PIN yalnız imza sertifikasını taşıyan karta gönderilir.
 
 ## Güvenlik
 
@@ -39,17 +50,31 @@ Akıllı kart için sertifika sağlayıcısının sürücüsü (PKCS#11) kurulu 
 
 ## Derleme
 
-Go 1.26 ve C derleyicisi gerekir (akıllı kart erişimi yerel kütüphane kullanır); her işletim sistemi kendi üzerinde derlenir.
+Go 1.27 ve C derleyicisi gerekir (akıllı kart erişimi yerel kütüphane kullanır); her işletim sistemi kendi üzerinde derlenir.
 
 ```bash
-git clone --recurse-submodules https://github.com/bahricanli/eyazisma-imza.git
+git clone https://github.com/bahricanli/eyazisma-imza.git
 cd eyazisma-imza
 go build ./cmd/eyazisma-imza
 go test ./...
 ```
 
-`eimza-go` belirli bir commit'e sabitlenmiş alt modüldür (`third_party/eimza-go`). Köprü ona yalnız `internal/engine` içindeki `Engine` arayüzü üzerinden bağlıdır; motor bu arayüzün başka bir uygulamasıyla değiştirilebilir.
+Kart erişimi testi yazılımsal bir token ister (Debian/Ubuntu: `apt-get install softhsm2 opensc`):
+
+```bash
+./scripts/softhsm-test.sh
+```
+
+## Yapı
+
+| Paket | İşi |
+|---|---|
+| `internal/cades` | CAdES imzasını (CMS SignedData) kurar, zaman damgasını alır |
+| `internal/token` | Kartın sürücüsü üzerinden imza sertifikasını bulur ve kartta imzalatır |
+| `internal/engine` | Anahtarı açma ve imzalama arayüzü; köprü yalnız buna bağlıdır |
+| `internal/portal` | İmza bağlantısıyla portaldan özeti alır, imzayı geri gönderir |
+| `internal/server` | Bu bilgisayardaki sayfa ve onun API'si |
 
 ## Lisans
 
-MIT. `third_party/eimza-go` kendi (MIT) lisansıyla gelir.
+MIT
