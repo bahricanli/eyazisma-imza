@@ -43,3 +43,28 @@ jobs:
           name: eyazisma-imza-macos-intel
           path: eyazisma-imza-intel
           if-no-files-found: error
+
+  # A version tag publishes the builds as a pre-release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect the builds
+        run: |
+          mkdir release
+          cp artifacts/eyazisma-imza-windows-latest/eyazisma-imza.exe release/eyazisma-imza-windows-amd64.exe
+          cp artifacts/eyazisma-imza-ubuntu-latest/eyazisma-imza release/eyazisma-imza-linux-amd64
+          cp artifacts/eyazisma-imza-macos-latest/eyazisma-imza release/eyazisma-imza-macos-arm64
+          cp artifacts/eyazisma-imza-macos-intel/eyazisma-imza-intel release/eyazisma-imza-macos-intel
+          cd release && sha256sum * > SHA256SUMS
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" release/* --title "${{ github.ref_name }}" --prerelease --notes-file .github/release-notes.md
