@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -40,8 +41,9 @@ func TestCertificateServesOnlyThisComputer(t *testing.T) {
 		t.Fatal("sertifika sistemlerin kabul ettiğinden uzun süreli")
 	}
 
+	// Windows keeps the file to its owner through the profile folder's access list, not through mode bits.
 	_, keyPath := Paths(directory)
-	if info, err := os.Stat(keyPath); err != nil || info.Mode().Perm() != 0o600 {
+	if info, err := os.Stat(keyPath); err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o600) {
 		t.Fatalf("anahtar dosyası yalnız sahibine açık olmalı: %v %v", info, err)
 	}
 
