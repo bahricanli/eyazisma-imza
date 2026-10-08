@@ -1,0 +1,10 @@
+github.com/KilimcininKorOglu/kamusm-go v1.2.0 h1:UFyI1fwaguyuLZTmXFUogSfwe6zXIQYOJ0C7St8cZgk=
+github.com/KilimcininKorOglu/kamusm-go v1.2.0/go.mod h1:i1+NfnEg2NZoiOTOtvXpi40z+/Xt1g0NYQE0cwhyUBs=
+github.com/miekg/pkcs11 v1.1.2 h1:/VxmeAX5qU6Q3EwafypogwWbYryHFmF2RpkJmw3m4MQ=
+github.com/miekg/pkcs11 v1.1.2/go.mod h1:XsNlhZGX73bx86s2hdc/FuaLm2CPZJemRLMA+WTFxgs=
+go.mozilla.org/pkcs7 v0.9.0 h1:yM4/HS9dYv7ri2biPtxt8ikvB37a980dg69/pKmS+eI=
+go.mozilla.org/pkcs7 v0.9.0/go.mod h1:SNgMg+EgDFwmvSmLRTNKC5fegJjB7v23qTQ0XLGUNHk=
+golang.org/x/crypto v0.50.0 h1:zO47/JPrL6vsNkINmLoo/PH1gcxpls50DNogFvB5ZGI=
+golang.org/x/crypto v0.50.0/go.mod h1:3muZ7vA7PBCE6xgPX7nkzzjiUq87kRItoJQM1Yo8S+Q=
+software.sslmate.com/src/go-pkcs12 v0.7.1 h1:bxkUPRsvTPNRBZa4M/aSX4PyMOEbq3V8I6hbkG4F4Q8=
+software.sslmate.com/src/go-pkcs12 v0.7.1/go.mod h1:Qiz0EyvDRJjjxGyUQa2cCNZn/wMyzrRJ/qcDXOQazLI=

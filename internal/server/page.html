@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>e-Yazışma imza uygulaması</title>
+<style>
+    :root { color-scheme: light dark; --line: #c9ced6; --muted: #667085; --accent: #1f6feb; --ok: #1a7f37; --bad: #b42318; }
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; line-height: 1.45; }
+    h1 { font-size: 1.3rem; margin-bottom: .2rem; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .card { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+    label { display: block; font-weight: 600; margin: .8rem 0 .25rem; }
+    input, select { width: 100%; box-sizing: border-box; padding: .55rem; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+    button { padding: .6rem 1rem; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font: inherit; cursor: pointer; margin-top: 1rem; }
+    button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    button:disabled { opacity: .5; cursor: default; }
+    dl { display: grid; grid-template-columns: 9rem 1fr; gap: .3rem .8rem; margin: 0; }
+    dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
+    .notice { border-radius: 6px; padding: .7rem .9rem; margin-top: 1rem; }
+    .notice.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+    .notice.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
+    [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<h1>e-Yazışma imza uygulaması</h1>
+<div class="muted">İmza bu bilgisayarda atılır. PIN ve imza bağlantısı saklanmaz. Sürüm {{.Version}}</div>
+
+<div class="card" id="step-link">
+    <label for="link">İmza bağlantısı</label>
+    <input id="link" autocomplete="off" spellcheck="false" placeholder="https://portal.../imza/...">
+    <div class="muted">Portaldaki yazı sayfasında "İmza uygulamasıyla imzala" düğmesinin verdiği bağlantı.</div>
+    <button id="open">Devam</button>
+</div>
+
+<div class="card" id="step-trust" hidden>
+    <p><strong id="trust-origin"></strong> adresinden gelen imza isteklerine güveniyor musunuz?</p>
+    <div class="muted">Yalnız kendi derneğinizin portalına güvenin. Bu seçim hatırlanır.</div>
+    <button id="trust">Bu portala güven</button>
+    <button id="distrust" class="secondary">Vazgeç</button>
+</div>
+
+<div class="card" id="step-sign" hidden>
+    <dl>
+        <dt>Kurum</dt><dd id="s-organization"></dd>
+        <dt>Portal</dt><dd id="s-origin"></dd>
+        <dt>Sayı</dt><dd id="s-document-no"></dd>
+        <dt>Konu</dt><dd id="s-subject"></dd>
+        <dt>İşlem</dt><dd id="s-step"></dd>
+        <dt>İmzalanacak</dt><dd id="s-filename"></dd>
+        <dt>Zaman damgası</dt><dd id="s-timestamp"></dd>
+    </dl>
+
+    {{if .AllowPFX}}
+    <label for="source">Sertifika</label>
+    <select id="source">
+        <option value="card">Akıllı kart / token</option>
+        <option value="pfx">Dosyadan (yalnız sınama)</option>
+    </select>
+    {{end}}
+
+    <div id="card-fields">
+        <label for="pin">PIN</label>
+        <input id="pin" type="password" autocomplete="off" inputmode="numeric">
+    </div>
+    <div id="pfx-fields" hidden>
+        <label for="pfx">PFX dosyası</label>
+        <input id="pfx" type="file" accept=".pfx,.p12">
+        <label for="password">PFX parolası</label>
+        <input id="password" type="password" autocomplete="off">
+    </div>
+
+    <button id="sign">İmzala ve gönder</button>
+    <button id="cancel" class="secondary">Vazgeç</button>
+</div>
+
+<div class="notice" id="notice" hidden></div>
+
+<script>
+(function () {
+    var token = {{.Token}};
+    var $ = function (id) { return document.getElementById(id); };
+    var steps = ['step-link', 'step-trust', 'step-sign'];
+
+    function show(step) {
+        steps.forEach(function (id) { $(id).hidden = id !== step; });
+    }
+
+    function notice(text, ok) {
+        $('notice').hidden = !text;
+        $('notice').textContent = text || '';
+        $('notice').className = 'notice ' + (ok ? 'ok' : 'bad');
+    }
+
+    function call(path, body) {
+        return fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Bridge-Token': token },
+            body: JSON.stringify(body)
+        }).then(function (response) {
+            return response.json().then(function (data) {
+                if (!response.ok) { throw new Error(data.message || 'İşlem başarısız.'); }
+                return data;
+            });
+        });
+    }
+
+    function open() {
+        notice('');
+        call('/api/session', { link: $('link').value }).then(function (data) {
+            if (!data.trusted) {
+                $('trust-origin').textContent = data.origin;
+                show('step-trust');
+                return;
+            }
+            $('s-organization').textContent = data.organization;
+            $('s-origin').textContent = data.origin;
+            $('s-document-no').textContent = data.document_no;
+            $('s-subject').textContent = data.subject;
+            $('s-step').textContent = data.step_label;
+            $('s-filename').textContent = data.filename;
+            $('s-timestamp').textContent = data.timestamp ? 'Alınacak (' + data.profile + ' profili)' : 'Tanımlı değil; imza zaman damgasız atılacak';
+            show('step-sign');
+            $('pin').focus();
+        }).catch(function (error) { notice(error.message, false); });
+    }
+
+    function readFile(input) {
+        return new Promise(function (resolve, reject) {
+            if (!input.files.length) { reject(new Error('PFX dosyası seçin.')); return; }
+            var reader = new FileReader();
+            reader.onload = function () { resolve(reader.result.split(',')[1]); };
+            reader.onerror = function () { reject(new Error('Dosya okunamadı.')); };
+            reader.readAsDataURL(input.files[0]);
+        });
+    }
+
+    function sign() {
+        var source = $('source') ? $('source').value : 'card';
+        var body = { link: $('link').value, source: source, pin: $('pin').value, password: $('password').value };
+        var ready = source === 'pfx' ? readFile($('pfx')).then(function (data) { body.pfx = data; }) : Promise.resolve();
+
+        notice('');
+        $('sign').disabled = true;
+        ready.then(function () { return call('/api/sign', body); }).then(function (data) {
+            $('pin').value = ''; $('password').value = ''; $('link').value = '';
+            show('step-link');
+            notice(data.message + ' İmzalayan: ' + data.signer + '.' + (data.complete ? ' Paket tamamlandı.' : ''), true);
+        }).catch(function (error) { notice(error.message, false); }).then(function () { $('sign').disabled = false; });
+    }
+
+    function reset() { $('pin').value = ''; notice(''); show('step-link'); }
+
+    $('open').addEventListener('click', open);
+    $('link').addEventListener('keydown', function (event) { if (event.key === 'Enter') { open(); } });
+    $('trust').addEventListener('click', function () {
+        call('/api/trust', { link: $('link').value }).then(open).catch(function (error) { notice(error.message, false); });
+    });
+    $('distrust').addEventListener('click', reset);
+    $('cancel').addEventListener('click', reset);
+    $('sign').addEventListener('click', sign);
+    $('pin').addEventListener('keydown', function (event) { if (event.key === 'Enter') { sign(); } });
+    if ($('source')) {
+        $('source').addEventListener('change', function () {
+            $('card-fields').hidden = this.value !== 'card';
+            $('pfx-fields').hidden = this.value !== 'pfx';
+        });
+    }
+
+    // The portal opens this page with the link; it is taken out of the address at once.
+    var link = new URLSearchParams(location.search).get('link');
+    if (link) {
+        history.replaceState(null, '', '/');
+        $('link').value = link;
+        open();
+    }
+})();
+</script>
+</body>
+</html>
