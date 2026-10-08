@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/miekg/pkcs11"
 )
@@ -103,8 +104,10 @@ func Open(driver, pin string) (*Token, error) {
 
 		last = err
 
+		// A driver that saw a card is the card's driver: its answer stands,
+		// and another vendor's driver is not tried on the card.
 		var pinError pinError
-		if errors.As(err, &pinError) {
+		if errors.As(err, &pinError) || errors.Is(err, errCardWithoutKey) {
 			runtime.UnlockOSThread()
 
 			return nil, err
@@ -158,6 +161,18 @@ func isCode(err error, code uint) bool {
 
 	return errors.As(err, &found) && uint(found) == code
 }
+
+// errCardWithoutKey marks the failures of a driver that did see a card.
+var errCardWithoutKey = errors.New("kart görüldü")
+
+func seen(message string) error { return fmt.Errorf("%s%w", message, hidden{errCardWithoutKey}) }
+
+// hidden keeps a marker error out of the message.
+type hidden struct{ error }
+
+func (hidden) Error() string { return "" }
+
+func clean(text string) string { return strings.Trim(text, "\x00 ") }
 
 type pinError struct{ message string }
 
@@ -241,17 +256,21 @@ func find(context *pkcs11.Ctx, pin string) (*Token, error) {
 			_ = context.Logout(session)
 			_ = context.CloseSession(session)
 
-			return nil, errors.New("kartta sertifikanın özel anahtarı bulunamadı")
+			return nil, seen("kartta sertifikanın özel anahtarı bulunamadı")
 		}
 
 		return &Token{Certificate: certificate, context: context, session: session, key: keys[0]}, nil
 	}
 
 	if len(slots) > 1 {
-		return nil, errors.New("takılı kartlarda imza sertifikası bulunamadı; yalnız imza kartınızı takılı bırakıp yeniden deneyin")
+		return nil, seen("takılı kartlarda imza sertifikası bulunamadı; yalnız imza kartınızı takılı bırakıp yeniden deneyin")
 	}
 
-	return nil, errors.New("takılı bir kartta imza sertifikası bulunamadı")
+	if len(slots) == 1 {
+		return nil, seen("kartta imza sertifikası bulunamadı")
+	}
+
+	return nil, errors.New("takılı bir kart bulunamadı")
 }
 
 // signingCertificate picks the certificate meant for signing documents:
@@ -414,7 +433,7 @@ func List(driver string) ([]Card, []error) {
 				continue
 			}
 
-			card := Card{Driver: path, Label: info.Label, Model: info.Model}
+			card := Card{Driver: path, Label: clean(info.Label), Model: clean(info.Model)}
 
 			trace("C_OpenSession(%d)", slot)
 			session, err := context.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION)
@@ -437,6 +456,11 @@ func List(driver string) ([]Card, []error) {
 		trace("sürücü bırakılıyor")
 		context.Destroy()
 		trace("bitti: %s", path)
+
+		// The card has its driver; another vendor's driver has no business with it.
+		if len(cards) > 0 {
+			break
+		}
 	}
 
 	return cards, problems
