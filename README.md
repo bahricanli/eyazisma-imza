@@ -29,12 +29,25 @@ Uygulama hiçbir şeyi saklamaz: PIN, imza bağlantısı ve zaman damgası bilgi
 eyazisma-imza
 ```
 
-Uygulama `http://127.0.0.1:51515/` adresinde açılır ve tarayıcıda sayfasını gösterir. Seçenekler:
+Uygulama `http://127.0.0.1:51515/` adresinde açılır ve tarayıcıda sayfasını gösterir.
+
+Her seferinde elle başlatmamak için arka plan servisi olarak kaydedilebilir; oturum açılınca kendiliğinden başlar ve portalın imza düğmesi onu hazır bulur:
+
+```bash
+eyazisma-imza --install
+```
+
+`--uninstall` kaydı kaldırır ve servisi durdurur. Portal, yazı sayfasında uygulamanın çalışıp çalışmadığını `GET /status` ile gösterir; bu uç yalnız sürümü söyler.
+
+Seçenekler:
 
 | Seçenek | Anlamı |
 |---|---|
 | `--port 51515` | Dinlenecek port; portal varsayılanı bekler |
 | `--no-browser` | Sayfayı kendiliğinden açma |
+| `--install` / `--uninstall` | Oturum açılışında arka planda başlat / başlatma (macOS: launchd, Linux: masaüstü oturumu, Windows: başlangıç kaydı) |
+| `--cards` | Takılı kartları ve PIN'siz görünen sertifikaları listele |
+| `--sign <dosya>` | Portal olmadan bir dosyayı imzala (`--out`, `--tsa` ile) |
 | `--config <dosya>` | Güvenilen portalların tutulduğu dosya |
 | `--pkcs11 <dosya>` | Akıllı kart sürücüsünün yolu; verilmezse bilinen yerler denenir (`EYAZISMA_IMZA_PKCS11` ile de verilebilir) |
 | `--pfx` | Sınama için sertifikanın dosyadan (PFX) yüklenmesine izin ver |

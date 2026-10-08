@@ -1,3 +1,10 @@
 /eyazisma-imza
 /eyazisma-imza.exe
 /dist/
+# Sınama için konan gerçek belgeler ve imzalar depoya girmez
+*.eyp
+*.eyps
+*.imz
+deneme.xml
+paket/
+*.pdf

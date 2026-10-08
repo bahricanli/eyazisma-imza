@@ -48,6 +48,8 @@ func (s *Server) Handler() http.Handler {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.index)
+	mux.HandleFunc("GET /status", s.status)
+	mux.HandleFunc("OPTIONS /status", s.status)
 	mux.HandleFunc("POST /api/session", s.guard(s.session))
 	mux.HandleFunc("POST /api/trust", s.guard(s.trust))
 	mux.HandleFunc("POST /api/sign", s.guard(s.sign))
@@ -67,6 +69,30 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	_ = s.template.Execute(w, map[string]any{"Token": s.token, "AllowPFX": s.AllowPFX, "Version": s.Version})
+}
+
+// status lets a portal page see that the bridge is running. It gives away
+// nothing but the version, so any page may ask; signing still goes through
+// the bridge's own page.
+func (s *Server) status(w http.ResponseWriter, r *http.Request) {
+	if !local(r.Host) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+
+		return
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// Browsers ask before letting a public page reach this computer.
+	w.Header().Set("Access-Control-Allow-Private-Network", "true")
+	w.Header().Set("Access-Control-Allow-Methods", "GET")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+
+		return
+	}
+
+	respond(w, map[string]any{"name": "eyazisma-imza", "version": s.Version})
 }
 
 func (s *Server) guard(next func(http.ResponseWriter, *http.Request)) http.HandlerFunc {

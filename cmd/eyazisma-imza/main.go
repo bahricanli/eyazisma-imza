@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bahricanli/eyazisma-imza/internal/autostart"
 	"github.com/bahricanli/eyazisma-imza/internal/config"
 	"github.com/bahricanli/eyazisma-imza/internal/engine"
 	"github.com/bahricanli/eyazisma-imza/internal/portal"
@@ -37,12 +38,23 @@ func main() {
 	signFile := flag.String("sign", "", "portal olmadan sınama: bu dosyayı karttaki e-imzayla imzala ve çık")
 	output := flag.String("out", "", "--sign ile: imzanın yazılacağı dosya (varsayılan: <dosya>.imz)")
 	timestampURL := flag.String("tsa", "", "--sign ile: zaman damgası hizmetinin adresi; verilmezse imza zaman damgasız atılır")
+	install := flag.Bool("install", false, "uygulamayı oturum açılışında arka planda başlayacak şekilde kaydet ve başlat")
+	uninstall := flag.Bool("uninstall", false, "oturum açılışındaki kaydı kaldır ve arka plandaki uygulamayı durdur")
 	listCards := flag.Bool("cards", false, "takılı kartları ve PIN'siz görünen sertifikaları listele ve çık (PIN kullanılmaz)")
 	showVersion := flag.Bool("version", false, "sürümü yaz ve çık")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Println(version)
+
+		return
+	}
+
+	if *install || *uninstall {
+		if err := service(*install, *port, *driver, *configPath); err != nil {
+			fmt.Fprintln(os.Stderr, "Hata:", err)
+			os.Exit(1)
+		}
 
 		return
 	}
@@ -141,6 +153,43 @@ func signOnce(signer engine.Engine, input, output, timestampURL string) error {
 	}
 
 	fmt.Printf("İmza yazıldı: %s (%d bayt, düzey %s)\n", output, len(signature), reached)
+
+	return nil
+}
+
+// service registers the bridge to run in the background from login on, or removes that.
+func service(install bool, port int, driver, configPath string) error {
+	if !install {
+		if err := autostart.Uninstall(); err != nil {
+			return err
+		}
+
+		fmt.Println("Uygulama artık oturum açılışında başlamayacak.")
+
+		return nil
+	}
+
+	executable, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	// The background copy opens no browser window; the portal opens the page when a letter is signed.
+	arguments := []string{"--no-browser", "--port", fmt.Sprint(port)}
+	if driver != "" {
+		arguments = append(arguments, "--pkcs11", driver)
+	}
+	if configPath != "" {
+		arguments = append(arguments, "--config", configPath)
+	}
+
+	where, err := autostart.Install(executable, arguments)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Uygulama oturum açılışında arka planda başlayacak:", where)
+	fmt.Printf("Adresi: http://127.0.0.1:%d/\n", port)
 
 	return nil
 }

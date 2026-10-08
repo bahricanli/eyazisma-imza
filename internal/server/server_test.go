@@ -230,6 +230,42 @@ func TestSignatureIsNotSentWhenTheTimestampServiceFails(t *testing.T) {
 	}
 }
 
+func TestAPortalPageCanSeeThatTheBridgeIsRunning(t *testing.T) {
+	b := start(t, false)
+
+	request, _ := http.NewRequest(http.MethodGet, b.server.URL+"/status", nil)
+	request.Header.Set("Origin", "https://portal.example.org")
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+
+	var status map[string]string
+	_ = json.NewDecoder(response.Body).Decode(&status)
+
+	if response.StatusCode != http.StatusOK || status["name"] != "eyazisma-imza" || status["version"] != "test" || response.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Fatalf("durum: %d %v %v", response.StatusCode, status, response.Header)
+	}
+
+	preflight, _ := http.NewRequest(http.MethodOptions, b.server.URL+"/status", nil)
+	preflight.Header.Set("Access-Control-Request-Private-Network", "true")
+	answer, err := http.DefaultClient.Do(preflight)
+	if err != nil {
+		t.Fatal(err)
+	}
+	answer.Body.Close()
+
+	if answer.StatusCode != http.StatusNoContent || answer.Header.Get("Access-Control-Allow-Private-Network") != "true" {
+		t.Fatalf("ön istek: %d %v", answer.StatusCode, answer.Header)
+	}
+
+	// The status says nothing a stranger could use, and the signing API stays closed to other pages.
+	if status, _ := b.call("/api/session", map[string]string{"link": "https://portal.example.org/imza/x"}, map[string]string{"Origin": "https://portal.example.org"}); status != http.StatusForbidden {
+		t.Fatalf("başka sayfa imza API'sine ulaştı: %d", status)
+	}
+}
+
 func TestTheApiAnswersOnlyToItsOwnPage(t *testing.T) {
 	b := start(t, false)
 	body := map[string]string{"link": "https://portal.example.org/imza/x"}
