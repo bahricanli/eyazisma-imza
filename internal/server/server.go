@@ -98,7 +98,7 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 func (s *Server) guard(next func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		ownOrigin := origin == "" || origin == "http://"+r.Host
+		ownOrigin := origin == "" || origin == "http://"+r.Host || origin == "https://"+r.Host
 
 		if !local(r.Host) || !ownOrigin || subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Bridge-Token")), []byte(s.token)) != 1 {
 			fail(w, http.StatusForbidden, "Bu istek imza uygulamasının kendi sayfasından gelmiyor.")

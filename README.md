@@ -39,12 +39,23 @@ eyazisma-imza --install
 
 `--uninstall` kaydı kaldırır ve servisi durdurur. Portal, yazı sayfasında uygulamanın çalışıp çalışmadığını `GET /status` ile gösterir; bu uç yalnız sürümü söyler.
 
+### HTTPS
+
+Portal HTTPS ile sunulur; bazı tarayıcılar (Safari) HTTPS sayfanın bu bilgisayardaki düz HTTP adrese istek göndermesine izin vermez. Bunun için uygulama HTTPS ile de dinleyebilir:
+
+```bash
+eyazisma-imza --https
+```
+
+Bu komut **bu bilgisayara özel** bir sertifika üretir ve sisteme tanıtır (sistem onay isteyebilir); uygulama bundan sonra `https://127.0.0.1:51516/` adresinde de dinler. Sertifika yalnız `127.0.0.1` ve `localhost` için geçerlidir, başka sertifika imzalayamaz ve özel anahtarı bu bilgisayardan çıkmaz. Yazılımla birlikte hazır bir sertifika dağıtılmaz: öyle bir sertifikanın anahtarı herkeste olurdu. `--no-https` sertifikayı sistemden ve bilgisayardan kaldırır. Firefox kendi sertifika deposunu kullanır; orada düz HTTP adres zaten çalışır.
+
 Seçenekler:
 
 | Seçenek | Anlamı |
 |---|---|
 | `--port 51515` | Dinlenecek port; portal varsayılanı bekler |
 | `--no-browser` | Sayfayı kendiliğinden açma |
+| `--https` / `--no-https` | Bu bilgisayara özel HTTPS sertifikasını üret ve tanıt / kaldır |
 | `--install` / `--uninstall` | Oturum açılışında arka planda başlat / başlatma (macOS: launchd, Linux: masaüstü oturumu, Windows: başlangıç kaydı) |
 | `--cards` | Takılı kartları ve PIN'siz görünen sertifikaları listele |
 | `--sign <dosya>` | Portal olmadan bir dosyayı imzala (`--out`, `--tsa` ile) |

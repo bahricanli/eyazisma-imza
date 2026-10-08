@@ -5,6 +5,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"crypto/x509"
 	"flag"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -20,6 +22,7 @@ import (
 	"github.com/bahricanli/eyazisma-imza/internal/autostart"
 	"github.com/bahricanli/eyazisma-imza/internal/config"
 	"github.com/bahricanli/eyazisma-imza/internal/engine"
+	"github.com/bahricanli/eyazisma-imza/internal/localtls"
 	"github.com/bahricanli/eyazisma-imza/internal/portal"
 	"github.com/bahricanli/eyazisma-imza/internal/server"
 	"github.com/bahricanli/eyazisma-imza/internal/token"
@@ -38,6 +41,8 @@ func main() {
 	signFile := flag.String("sign", "", "portal olmadan sınama: bu dosyayı karttaki e-imzayla imzala ve çık")
 	output := flag.String("out", "", "--sign ile: imzanın yazılacağı dosya (varsayılan: <dosya>.imz)")
 	timestampURL := flag.String("tsa", "", "--sign ile: zaman damgası hizmetinin adresi; verilmezse imza zaman damgasız atılır")
+	enableHTTPS := flag.Bool("https", false, "bu bilgisayara özel bir HTTPS sertifikası üret ve sisteme tanıt; uygulama HTTPS ile de dinler")
+	disableHTTPS := flag.Bool("no-https", false, "HTTPS sertifikasını sistemden ve bu bilgisayardan kaldır")
 	install := flag.Bool("install", false, "uygulamayı oturum açılışında arka planda başlayacak şekilde kaydet ve başlat")
 	uninstall := flag.Bool("uninstall", false, "oturum açılışındaki kaydı kaldır ve arka plandaki uygulamayı durdur")
 	listCards := flag.Bool("cards", false, "takılı kartları ve PIN'siz görünen sertifikaları listele ve çık (PIN kullanılmaz)")
@@ -46,6 +51,15 @@ func main() {
 
 	if *showVersion {
 		fmt.Println(version)
+
+		return
+	}
+
+	if *enableHTTPS || *disableHTTPS {
+		if err := secure(*enableHTTPS, *configPath); err != nil {
+			fmt.Fprintln(os.Stderr, "Hata:", err)
+			os.Exit(1)
+		}
 
 		return
 	}
@@ -98,13 +112,31 @@ func main() {
 
 	url := "http://" + address + "/"
 	fmt.Println("e-Yazışma imza uygulaması çalışıyor:", url)
+
+	handler := bridge.Handler()
+
+	// With this computer's certificate in place the bridge also listens over
+	// HTTPS on the next port, for browsers that keep HTTPS pages from plain HTTP.
+	if certificate, err := localtls.Load(filepath.Dir(path)); err == nil {
+		secureAddress := fmt.Sprintf("127.0.0.1:%d", *port+1)
+
+		if secureListener, err := tls.Listen("tcp", secureAddress, &tls.Config{Certificates: []tls.Certificate{*certificate}, MinVersion: tls.VersionTLS12}); err == nil {
+			fmt.Println("HTTPS adresi: https://" + secureAddress + "/")
+
+			go func() {
+				_ = (&http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}).Serve(secureListener)
+			}()
+		} else {
+			fmt.Fprintln(os.Stderr, "HTTPS dinlenemedi:", err)
+		}
+	}
 	fmt.Println("Kapatmak için bu pencereyi kapatın ya da Ctrl+C'ye basın.")
 
 	if !*noBrowser {
 		openBrowser(url)
 	}
 
-	httpServer := &http.Server{Handler: bridge.Handler(), ReadHeaderTimeout: 10 * time.Second}
+	httpServer := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	if err := httpServer.Serve(listener); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -153,6 +185,47 @@ func signOnce(signer engine.Engine, input, output, timestampURL string) error {
 	}
 
 	fmt.Printf("İmza yazıldı: %s (%d bayt, düzey %s)\n", output, len(signature), reached)
+
+	return nil
+}
+
+// secure makes and trusts this computer's HTTPS certificate, or removes it.
+func secure(enable bool, configPath string) error {
+	path := configPath
+	if path == "" {
+		var err error
+		if path, err = config.DefaultPath(); err != nil {
+			return err
+		}
+	}
+
+	directory := filepath.Dir(path)
+
+	if !enable {
+		if err := localtls.Remove(directory); err != nil {
+			return err
+		}
+
+		fmt.Println("HTTPS sertifikası kaldırıldı. Çalışan uygulamayı yeniden başlatın.")
+
+		return nil
+	}
+
+	if _, err := localtls.Load(directory); err != nil {
+		if err := localtls.Generate(directory); err != nil {
+			return err
+		}
+	}
+
+	certificate, _ := localtls.Paths(directory)
+	fmt.Println("Bu bilgisayara özel sertifika:", certificate)
+	fmt.Println("Sistem, sertifikaya güvenmek için onayınızı isteyebilir.")
+
+	if err := localtls.Trust(directory); err != nil {
+		return fmt.Errorf("sertifika sisteme tanıtılamadı: %w", err)
+	}
+
+	fmt.Println("Sertifika tanıtıldı. Çalışan uygulamayı yeniden başlatın (servis kuruluysa --install).")
 
 	return nil
 }
