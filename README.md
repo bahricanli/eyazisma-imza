@@ -39,7 +39,13 @@ Uygulama `http://127.0.0.1:51515/` adresinde açılır ve tarayıcıda sayfasın
 | `--pkcs11 <dosya>` | Akıllı kart sürücüsünün yolu; verilmezse bilinen yerler denenir (`EYAZISMA_IMZA_PKCS11` ile de verilebilir) |
 | `--pfx` | Sınama için sertifikanın dosyadan (PFX) yüklenmesine izin ver |
 
-Akıllı kart için sertifika sağlayıcısının sürücüsü (PKCS#11) kurulu olmalıdır. Kartta birden fazla sertifika varsa belge imzalamaya ayrılmış olan (inkâr edilemezlik) seçilir. PIN yalnız imza sertifikasını taşıyan karta gönderilir.
+Kartı portal olmadan denemek için bir dosya doğrudan imzalanabilir; PIN terminalde sorulur:
+
+```bash
+eyazisma-imza --sign belge.xml
+```
+
+Akıllı kart için sertifika sağlayıcısının sürücüsü (PKCS#11) kurulu olmalıdır. Sürücü ile uygulama aynı işlemci mimarisinde olmalıdır: Apple Silicon Mac'te yalnız Intel sürücüsü varsa uygulamanın Intel derlemesi (Rosetta ile) kullanılır. Kartta birden fazla sertifika varsa belge imzalamaya ayrılmış olan (inkâr edilemezlik) seçilir. PIN yalnız imza sertifikasını taşıyan karta gönderilir.
 
 ## Güvenlik
 

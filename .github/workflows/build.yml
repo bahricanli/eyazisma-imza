@@ -33,3 +33,13 @@ jobs:
             eyazisma-imza
             eyazisma-imza.exe
           if-no-files-found: error
+      # Card drivers on many Macs are still Intel-only; a driver can only be loaded by a build of its own kind.
+      - name: Intel build for macOS
+        if: runner.os == 'macOS'
+        run: GOARCH=amd64 CGO_ENABLED=1 go build -ldflags "-X main.version=${{ github.ref_name }}" -o eyazisma-imza-intel ./cmd/eyazisma-imza
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS'
+        with:
+          name: eyazisma-imza-macos-intel
+          path: eyazisma-imza-intel
+          if-no-files-found: error
