@@ -89,6 +89,10 @@ type bridge struct {
 }
 
 func start(t *testing.T, allowPFX bool) *bridge {
+	return startWithEngine(t, allowPFX, engine.Native{})
+}
+
+func startWithEngine(t *testing.T, allowPFX bool, signer engine.Engine) *bridge {
 	t.Helper()
 
 	settings, err := config.Load(filepath.Join(t.TempDir(), "config.json"))
@@ -96,7 +100,7 @@ func start(t *testing.T, allowPFX bool) *bridge {
 		t.Fatal(err)
 	}
 
-	handler := (&Server{Engine: engine.Native{}, Portal: portal.New(), Config: settings, AllowPFX: allowPFX, Version: "test"}).Handler()
+	handler := (&Server{Engine: signer, Portal: portal.New(), Config: settings, AllowPFX: allowPFX, Version: "test"}).Handler()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 

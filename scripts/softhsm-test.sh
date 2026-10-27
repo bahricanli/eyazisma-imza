@@ -4,7 +4,7 @@
 # openssl (Debian/Ubuntu: apt-get install softhsm2 opensc openssl).
 set -eu
 
-module=$(find /usr/lib /usr/local/lib -name libsofthsm2.so 2>/dev/null | head -n 1)
+module=$(find /usr/lib /usr/local/lib /opt/homebrew/opt/softhsm/lib -name libsofthsm2.so 2>/dev/null | head -n 1)
 [ -n "$module" ] || { echo "libsofthsm2.so bulunamadı" >&2; exit 1; }
 
 work=$(mktemp -d)
@@ -37,5 +37,5 @@ for kind in rsa ec; do
 
     echo "== $kind"
     EYAZISMA_IMZA_TEST_PKCS11="$module" EYAZISMA_IMZA_TEST_PIN=1234 EYAZISMA_IMZA_TEST_NAME="Nitelikli Imza" \
-        go test ./internal/token -run TestSigningWithATokenThroughItsDriver -count=1 -v
+        go test ./internal/token -run 'Test(SigningWithATokenThroughItsDriver|SelectedTokenIsBoundToCardAndCertificate)$' -count=1 -v
 done

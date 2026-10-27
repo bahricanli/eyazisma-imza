@@ -19,7 +19,9 @@ Portal uzun dönemli imza istediğinde uygulama ulaşabildiği en yüksek düzey
 
 1. Portalda yazı sayfasındaki "İmza uygulamasıyla imzala" düğmesi tek kullanımlık, 15 dakika geçerli bir imza bağlantısı üretir ve bu uygulamayı açar.
 2. Uygulama bağlantıyla portaldan imzalanacak özeti (ve tanımlıysa zaman damgası hizmetinin bilgisini) alır; yazının sayısını ve konusunu gösterir.
-3. İmzacı PIN'ini yazar. İmza bu bilgisayarda atılır ve portala gönderilir; bağlantı harcanır.
+3. Uygulama kartları ve imza sertifikalarını PIN kullanmadan listeler. İmzacı kart/sertifikayı seçer, ardından PIN'ini yazar. PIN yalnız seçilen karta gönderilir; kart veya sertifika değişmişse yeniden listeleme gerekir. İmza bu bilgisayarda atılır ve portala gönderilir; bağlantı harcanır.
+
+Sürücü taramaları ayrı süreçlerde ve süre sınırıyla çalışır; bir sağlayıcının sürücüsü takılsa bile uygulama diğer sürücüleri deneyebilir. Kart seçilmeden PIN girişi ve imzalama açılmaz.
 
 Uygulama hiçbir şeyi saklamaz: PIN, imza bağlantısı ve zaman damgası bilgisi yalnız o imza sırasında bellekte durur. Diske yazılan tek şey güvenilen portalların adresleridir.
 

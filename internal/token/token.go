@@ -387,6 +387,8 @@ func (t *Token) Close() {
 
 // Card describes a card a driver sees, with the certificates it shows without the PIN.
 type Card struct {
+	Slot         uint
+	Serial       string
 	Driver       string
 	Label        string
 	Model        string
@@ -433,7 +435,7 @@ func List(driver string) ([]Card, []error) {
 				continue
 			}
 
-			card := Card{Driver: path, Label: clean(info.Label), Model: clean(info.Model)}
+			card := Card{Driver: path, Slot: slot, Serial: clean(info.SerialNumber), Label: clean(info.Label), Model: clean(info.Model)}
 
 			trace("C_OpenSession(%d)", slot)
 			session, err := context.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION)

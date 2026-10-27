@@ -62,3 +62,45 @@ func TestMissingDriverIsReported(t *testing.T) {
 		t.Fatalf("eksik sürücü: %v", err)
 	}
 }
+
+func TestSelectedTokenIsBoundToCardAndCertificate(t *testing.T) {
+	driver, pin := os.Getenv("EYAZISMA_IMZA_TEST_PKCS11"), os.Getenv("EYAZISMA_IMZA_TEST_PIN")
+	if driver == "" {
+		t.Skip("EYAZISMA_IMZA_TEST_PKCS11 tanımlı değil")
+	}
+	cards, problems := List(driver)
+	if len(cards) != 1 || cards[0].Chosen == nil {
+		t.Fatalf("PIN-free card scan: %d %v", len(cards), problems)
+	}
+	card := cards[0]
+	choice := Selection{Driver: card.Driver, Slot: card.Slot, Serial: card.Serial, Fingerprint: Fingerprint(card.Chosen)}
+	swapped := choice
+	swapped.Serial += "changed"
+	if _, err := OpenSelected(swapped, pin); err == nil {
+		t.Fatal("a replaced card was accepted")
+	}
+	swapped = choice
+	swapped.Fingerprint = strings.Repeat("0", 64)
+	if _, err := OpenSelected(swapped, pin); err == nil {
+		t.Fatal("a replaced certificate was accepted")
+	}
+	key, err := OpenSelected(choice, pin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer key.Close()
+	if Fingerprint(key.Certificate) != choice.Fingerprint {
+		t.Fatal("wrong signing certificate")
+	}
+	signature, err := cades.Sign([]byte("selected token"), key.Certificate, key, cades.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := pkcs7.Parse(signature)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := parsed.Verify(); err != nil {
+		t.Fatal(err)
+	}
+}

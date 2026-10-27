@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/bahricanli/eyazisma-imza/internal/config"
 	"github.com/bahricanli/eyazisma-imza/internal/engine"
@@ -30,6 +31,9 @@ type Server struct {
 	// AllowPFX lets a key be loaded from a file instead of a card; for testing only.
 	AllowPFX bool
 	Version  string
+
+	hardware sync.Mutex
+	choices  map[string]cardChoice
 
 	token    string
 	template *template.Template
@@ -52,6 +56,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("OPTIONS /status", s.status)
 	mux.HandleFunc("POST /api/session", s.guard(s.session))
 	mux.HandleFunc("POST /api/trust", s.guard(s.trust))
+	mux.HandleFunc("POST /api/cards", s.guard(s.cards))
 	mux.HandleFunc("POST /api/sign", s.guard(s.sign))
 
 	return mux
@@ -112,6 +117,7 @@ func (s *Server) guard(next func(http.ResponseWriter, *http.Request)) http.Handl
 }
 
 type request struct {
+	CardID   string `json:"card_id"`
 	Link     string `json:"link"`
 	Source   string `json:"source"`
 	PIN      string `json:"pin"`
@@ -181,6 +187,10 @@ func (s *Server) sign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if input.Source != "pfx" {
+		s.hardware.Lock()
+		defer s.hardware.Unlock()
+	}
 	key, err := s.open(input)
 	if err != nil {
 		fail(w, http.StatusUnprocessableEntity, err.Error())
@@ -245,7 +255,15 @@ func (s *Server) open(input *request) (*engine.Key, error) {
 		return s.Engine.OpenPFX(data, input.Password)
 	}
 
-	return s.Engine.OpenCard(input.PIN)
+	choice, ok := s.choices[input.CardID]
+	if input.CardID == "" || !ok || choice.link != input.Link {
+		return nil, errors.New("önce kart ve imza sertifikasını seçin; liste değiştiyse kartları yeniden listeleyin")
+	}
+	selector, ok := s.Engine.(engine.CardSelector)
+	if !ok {
+		return nil, errors.New("bu sürüm kart seçimini desteklemiyor")
+	}
+	return selector.OpenSelectedCard(choice.card, input.PIN)
 }
 
 func (s *Server) read(w http.ResponseWriter, r *http.Request) (*request, string, bool) {

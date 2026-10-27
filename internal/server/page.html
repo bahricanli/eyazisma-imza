@@ -61,8 +61,12 @@
     {{end}}
 
     <div id="card-fields">
+        <label for="card">Kart ve imza sertifikası</label>
+        <select id="card"><option value="">Önce kartları listeleyin</option></select>
+        <button type="button" id="refresh-cards" class="secondary">Kartları yeniden listele</button>
+        <p class="muted" id="card-state" role="status">Kartlar PIN kullanılmadan okunur.</p>
         <label for="pin">PIN</label>
-        <input id="pin" type="password" autocomplete="off" inputmode="numeric">
+        <input id="pin" type="password" disabled autocomplete="off" inputmode="numeric">
     </div>
     <div id="pfx-fields" hidden>
         <label for="pfx">PFX dosyası</label>
@@ -71,7 +75,7 @@
         <input id="password" type="password" autocomplete="off">
     </div>
 
-    <button id="sign">İmzala ve gönder</button>
+    <button id="sign" disabled>İmzala ve gönder</button>
     <button id="cancel" class="secondary">Vazgeç</button>
 </div>
 
@@ -122,7 +126,7 @@
             $('s-filename').textContent = data.filename;
             $('s-timestamp').textContent = data.timestamp ? 'Alınacak' : 'Tanımlı değil; imza zaman damgasız atılacak';
             show('step-sign');
-            $('pin').focus();
+            loadCards();
         }).catch(function (error) { notice(error.message, false); });
     }
 
@@ -136,9 +140,41 @@
         });
     }
 
+    function cardMode() { return !$('source') || $('source').value === 'card'; }
+
+    function updateCardState() {
+        var ready = !!$('card').value;
+        $('pin').disabled = !ready;
+        $('sign').disabled = cardMode() && !ready;
+    }
+
+    function loadCards() {
+        $('card').textContent = '';
+        var placeholder = document.createElement('option');
+        placeholder.value = ''; placeholder.textContent = 'Kart ve sertifika seçin';
+        $('card').appendChild(placeholder);
+        $('pin').value = '';
+        $('refresh-cards').disabled = true;
+        $('card-state').textContent = 'Kartlar ve sertifikalar okunuyor…';
+        updateCardState();
+        call('/api/cards', {link: $('link').value}).then(function (data) {
+            (data.cards || []).forEach(function (card) {
+                var option = document.createElement('option');
+                option.value = card.id;
+                option.textContent = card.label;
+                $('card').appendChild(option);
+            });
+            $('card-state').textContent = data.cards && data.cards.length ? 'İmzalayacağınız kart ve sertifikayı seçin; ardından PIN girin.' : 'Kart bulunamadı. Kartı takıp yeniden listeleyin.';
+        }).catch(function (error) {
+            $('card-state').textContent = error.message;
+        }).then(function () { $('refresh-cards').disabled = false; updateCardState(); });
+    }
+
     function sign() {
         var source = $('source') ? $('source').value : 'card';
-        var body = { link: $('link').value, source: source, pin: $('pin').value, password: $('password').value };
+        if (source === 'card' && !$('card').value) { notice('Önce kart ve imza sertifikası seçin.', false); return; }
+        if (source === 'card' && !$('pin').value) { notice('PIN gerekli.', false); $('pin').focus(); return; }
+        var body = { link: $('link').value, source: source, card_id: $('card').value, pin: $('pin').value, password: $('password').value };
         var ready = source === 'pfx' ? readFile($('pfx')).then(function (data) { body.pfx = data; }) : Promise.resolve();
 
         notice('');
@@ -150,7 +186,7 @@
             var text = data.message + ' İmzalayan: ' + data.signer + '. İmza düzeyi: ' + (levels[data.profile] || data.profile) + '.';
             if (data.asked && data.asked !== data.profile) { text += ' Portal ' + data.asked + ' düzeyini istemişti; uygulama henüz o düzeyde imza atamıyor.'; }
             notice(text + (data.complete ? ' Paket tamamlandı.' : ''), true);
-        }).catch(function (error) { notice(error.message, false); }).then(function () { $('sign').disabled = false; });
+        }).catch(function (error) { notice(error.message, false); }).then(updateCardState);
     }
 
     function reset() { $('pin').value = ''; notice(''); show('step-link'); }
@@ -163,11 +199,15 @@
     $('distrust').addEventListener('click', reset);
     $('cancel').addEventListener('click', reset);
     $('sign').addEventListener('click', sign);
+    $('refresh-cards').addEventListener('click', loadCards);
+    $('card').addEventListener('change', function () { $('pin').value = ''; updateCardState(); if (this.value) { $('pin').focus(); } });
     $('pin').addEventListener('keydown', function (event) { if (event.key === 'Enter') { sign(); } });
     if ($('source')) {
         $('source').addEventListener('change', function () {
             $('card-fields').hidden = this.value !== 'card';
             $('pfx-fields').hidden = this.value !== 'pfx';
+            $('pin').value = '';
+            updateCardState();
         });
     }
 

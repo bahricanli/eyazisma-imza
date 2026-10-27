@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -46,8 +47,22 @@ func main() {
 	install := flag.Bool("install", false, "uygulamayı oturum açılışında arka planda başlayacak şekilde kaydet ve başlat")
 	uninstall := flag.Bool("uninstall", false, "oturum açılışındaki kaydı kaldır ve arka plandaki uygulamayı durdur")
 	listCards := flag.Bool("cards", false, "takılı kartları ve PIN'siz görünen sertifikaları listele ve çık (PIN kullanılmaz)")
+	scanJSON := flag.Bool("cards-json", false, "iç kullanım: PIN kullanmadan kart seçeneklerini JSON olarak listele")
 	showVersion := flag.Bool("version", false, "sürümü yaz ve çık")
 	flag.Parse()
+
+	if *scanJSON {
+		choices, err := (engine.Native{Driver: *driver}).CardsInProcess()
+		result := struct {
+			Cards []engine.Card `json:"cards"`
+			Error string        `json:"error,omitempty"`
+		}{Cards: choices}
+		if err != nil {
+			result.Error = err.Error()
+		}
+		_ = json.NewEncoder(os.Stdout).Encode(result)
+		return
+	}
 
 	if *showVersion {
 		fmt.Println(version)
