@@ -131,3 +131,22 @@ Kart ve imza sertifikası listelenirse aynı `--opensc` seçeneğiyle portal üz
 imzalamaya devam edilebilir. Kartın PIN kullanmadan listelenmesi, gerçek imzalama
 uyumunun henüz sınandığı anlamına gelmez. OpenSC kartı desteklemiyorsa sağlayıcının
 uygun sürücüsü gerekir. Uygulama OpenSC'yi kendiliğinden kurmaz.
+
+### Chrome ve Firefox eklentileri
+
+Eklentiler ayrı depolardadır:
+
+- https://github.com/bahricanli/eyazisma-imza-chrome
+- https://github.com/bahricanli/eyazisma-imza-firefox
+
+v0.2.9 ile Native Messaging bağlantısı desteklenir. Uygulamayı kalıcı bir
+klasöre koyup `--install-browser-host` çalıştırın. Her iki tarayıcı için kullanıcı
+kaydı oluşturulur. Chrome mağazasındaki eklentinin gerçek kimliğini
+`--chrome-extension-id KIMLIK` ile belirtin; eklenti menüsü doğru komutu gösterir.
+Sürücü yolunu sabitlemek için aynı komuta `--pkcs11 /sürücü/yolu` ekleyebilirsiniz.
+Uygulamayı taşırsanız kurulumu yeniden yapın.
+
+Eklenti yerel uygulamayı gerektiğinde başlatır ve mevcut imza/kart ekranını açar.
+PIN, özel anahtar ve PDF içeriği eklentiye aktarılmaz. Portal güven onayı ve
+imza işlemi yerel ekranda devam eder. İlk sürüm yalnız portal.lkd.org.tr ve
+portal.pkd.org.tr imza bağlantılarını kabul eder.

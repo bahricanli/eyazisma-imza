@@ -24,6 +24,7 @@ import (
 	"github.com/bahricanli/eyazisma-imza/internal/config"
 	"github.com/bahricanli/eyazisma-imza/internal/engine"
 	"github.com/bahricanli/eyazisma-imza/internal/localtls"
+	"github.com/bahricanli/eyazisma-imza/internal/nativebridge"
 	"github.com/bahricanli/eyazisma-imza/internal/portal"
 	"github.com/bahricanli/eyazisma-imza/internal/server"
 	"github.com/bahricanli/eyazisma-imza/internal/token"
@@ -34,6 +35,17 @@ import (
 var version = "dev"
 
 func main() {
+	nativeSettings, _ := nativebridge.LoadSettings()
+	if nativebridge.Called(os.Args[1:], nativeSettings.ChromeID) {
+		if err := nativeHost(); err != nil {
+			fmt.Fprintln(os.Stderr, "Tarayıcı bağlantısı kapandı:", err)
+		}
+		return
+	}
+
+	installBrowser := flag.Bool("install-browser-host", false, "Chrome ve Firefox eklentilerinin bu uygulamayı başlatabilmesi için kullanıcı kaydını kur")
+	chromeExtensionID := flag.String("chrome-extension-id", nativebridge.ChromeID, "--install-browser-host ile Chrome mağaza eklenti kimliği")
+	nativeMode := flag.Bool("native-host", false, "iç kullanım: tarayıcı yerel mesajlaşma protokolü")
 	port := flag.Int("port", 51515, "uygulamanın bu bilgisayarda dinleyeceği port")
 	configPath := flag.String("config", "", "ayar dosyası (varsayılan: kullanıcının ayar dizini)")
 	noBrowser := flag.Bool("no-browser", false, "sayfayı tarayıcıda açma")
@@ -59,6 +71,24 @@ func main() {
 		*driver = "opensc"
 	}
 
+	if *nativeMode {
+		if err := nativeHost(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *installBrowser {
+		executable, err := os.Executable()
+		if err == nil {
+			err = nativebridge.Install(executable, nativebridge.Settings{Driver: *driver, Port: *port, ChromeID: *chromeExtensionID})
+		}
+		if err != nil {
+			log.Fatal("Tarayıcı bağlantısı kurulamadı: ", err)
+		}
+		fmt.Println("Chrome ve Firefox bağlantısı kuruldu. Uygulama dosyasını bu konumda tutun.")
+		return
+	}
 	if *scanJSON {
 		choices, err := (engine.Native{Driver: *driver}).CardsInProcess()
 		result := struct {

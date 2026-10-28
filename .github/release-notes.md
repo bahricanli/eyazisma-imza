@@ -20,3 +20,15 @@ eyazisma-imza --https      # bu bilgisayara özel HTTPS sertifikasını üretir 
 ```
 
 Ne yaptığı, seçenekleri ve bilinen eksikleri için [README](https://github.com/bahricanli/eyazisma-imza#readme).
+
+## Tarayıcı eklentileri (v0.2.9 ve sonrası)
+
+Chrome ve Firefox eklentilerinin uygulamayı başlatabilmesi için
+`--install-browser-host` çalıştırın. Chrome mağaza kimliğini
+`--chrome-extension-id KIMLIK` ile belirtin; eklenti menüsündeki kurulum komutunu
+kopyalayabilirsiniz. Kullanıcı kaydı her iki tarayıcıya da kurulur. Uygulama
+kalıcı bir klasörde durmalıdır. Gerekirse `--pkcs11` ile kart sürücüsünü seçin.
+
+Eklenti depoları:
+- https://github.com/bahricanli/eyazisma-imza-chrome
+- https://github.com/bahricanli/eyazisma-imza-firefox
