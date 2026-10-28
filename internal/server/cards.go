@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"html/template"
 	"net/http"
+	"runtime"
 
 	"github.com/bahricanli/eyazisma-imza/internal/engine"
 )
@@ -65,7 +66,7 @@ func (s *Server) cardIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'")
 	w.Header().Set("Referrer-Policy", "no-referrer")
-	_ = template.Must(template.New("cards").Parse(cardsPage)).Execute(w, map[string]string{"Token": s.token, "Version": s.versionLabel()})
+	_ = template.Must(template.New("cards").Parse(cardsPage+driverHelp)).Execute(w, map[string]string{"Token": s.token, "Version": s.versionLabel(), "Platform": runtime.GOOS + "/" + runtime.GOARCH})
 }
 
 // localCards never creates signing choices or contacts a portal.

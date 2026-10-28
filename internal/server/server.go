@@ -28,6 +28,9 @@ var page string
 //go:embed cards.html
 var cardsPage string
 
+//go:embed driver_help.html
+var driverHelp string
+
 type Server struct {
 	Engine engine.Engine
 	Portal *portal.Client
@@ -53,7 +56,7 @@ func (s *Server) Handler() http.Handler {
 		panic(err)
 	}
 	s.token = hex.EncodeToString(secret)
-	s.template = template.Must(template.New("page").Parse(page))
+	s.template = template.Must(template.New("page").Parse(page + driverHelp))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.index)
@@ -80,7 +83,7 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'")
 	w.Header().Set("Referrer-Policy", "no-referrer")
-	_ = s.template.Execute(w, map[string]any{"Token": s.token, "AllowPFX": s.AllowPFX, "Version": s.versionLabel()})
+	_ = s.template.Execute(w, map[string]any{"Token": s.token, "AllowPFX": s.AllowPFX, "Version": s.versionLabel(), "Platform": runtime.GOOS + "/" + runtime.GOARCH})
 }
 
 // status lets a portal page see that the bridge is running. It gives away

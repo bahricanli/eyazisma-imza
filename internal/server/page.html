@@ -65,6 +65,7 @@
         <select id="card"><option value="">Önce kartları listeleyin</option></select>
         <button type="button" id="refresh-cards" class="secondary">Kartları yeniden listele</button>
         <p class="muted" id="card-state" role="status">Kartlar PIN kullanılmadan okunur.</p>
+        {{template "driver-help" .}}
         <label for="pin">PIN</label>
         <input id="pin" type="password" disabled autocomplete="off" inputmode="numeric">
     </div>
@@ -155,6 +156,8 @@
         $('card').appendChild(placeholder);
         $('pin').value = '';
         $('refresh-cards').disabled = true;
+        $('driver-help').hidden = true;
+        $('driver-retry').disabled = true;
         $('card-state').textContent = 'Kartlar ve sertifikalar okunuyor…';
         updateCardState();
         call('/api/cards', {link: $('link').value}).then(function (data) {
@@ -164,10 +167,12 @@
                 option.textContent = card.label;
                 $('card').appendChild(option);
             });
+            $('driver-help').hidden = !!(data.cards && data.cards.length);
             $('card-state').textContent = data.cards && data.cards.length ? 'İmzalayacağınız kart ve sertifikayı seçin; ardından PIN girin.' : 'Kart bulunamadı. Kartı takıp yeniden listeleyin.';
         }).catch(function (error) {
             $('card-state').textContent = error.message;
-        }).then(function () { $('refresh-cards').disabled = false; updateCardState(); });
+            $('driver-help').hidden = false;
+        }).then(function () { $('refresh-cards').disabled = false; $('driver-retry').disabled = false; updateCardState(); });
     }
 
     function sign() {

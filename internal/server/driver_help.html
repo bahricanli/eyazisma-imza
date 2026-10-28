@@ -1,0 +1,27 @@
+{{define "driver-help"}}
+<section id="driver-help" hidden aria-labelledby="driver-help-title" style="border:1px solid #b88700;border-radius:8px;padding:16px;margin:16px 0">
+<h2 id="driver-help-title">Kart veya okuyucu bulunamadı mı?</h2>
+<p>Önce USB okuyucuyu ve kartı takıp yeniden deneyin. Okuyucu sürücüsü ile kartın imzalama sürücüsü farklı olabilir.</p>
+<p>Bu uygulama: <strong>{{.Platform}}</strong>. Sürücüyü aynı mimariye uygun seçin. Apple Silicon için ARM64 sürücü yoksa Intel uygulaması ve Rosetta geçici çözüm olabilir.</p>
+<label for="driver-provider">E-imza sağlayıcınız</label>
+<select id="driver-provider" style="width:100%;padding:8px;font:inherit">
+<option value="">Sağlayıcı seçin</option>
+<option value="https://kamusm.bilgem.tubitak.gov.tr/islemler/surucu_yukleme_servisi/">KamuSM / AKİS — sürücü yükleme servisi</option>
+<option value="https://www.e-guven.com/">e-Güven — resmî site ve destek</option>
+<option value="https://helpdesk.e-tugra.com.tr/">e-Tuğra — resmî destek</option>
+<option value="https://turktrust.com.tr/gerekli-yazilimlar.html">TÜRKTRUST — gerekli yazılımlar</option>
+<option value="https://github.com/OpenSC/OpenSC/releases">OpenSC — alternatif sürücü</option>
+</select>
+<p><a id="driver-download" hidden target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Resmî kurulum / destek sayfasını aç</a></p>
+<p>Sağlayıcınızın sayfasından işletim sisteminize uygun kart ve gerekiyorsa okuyucu sürücüsünü kurun. Kurulum tamamlanınca bu ekrana dönüp aşağıdaki düğmeye basın. Yeniden başlatma istenirse uygulamayı ve imzalama sürecini yeniden açın.</p>
+<p>OpenSC her kartı desteklemez. Kurulu OpenSC normal taramada otomatik denenir; yalnız OpenSC ile kontrol için uygulamayı <code>--cards-ui --opensc</code> ile açabilirsiniz.</p>
+<button type="button" id="driver-retry">Kurulumu tamamladım, yeniden tara</button>
+</section>
+<script>
+(function(){
+var provider=document.getElementById('driver-provider'),link=document.getElementById('driver-download');
+provider.addEventListener('change',function(){link.hidden=!provider.value;if(provider.value){link.href=provider.value;}else{link.removeAttribute('href');}});
+document.getElementById('driver-retry').addEventListener('click',function(){document.getElementById('refresh-cards')?.click();document.getElementById('refresh')?.click();});
+})();
+</script>
+{{end}}

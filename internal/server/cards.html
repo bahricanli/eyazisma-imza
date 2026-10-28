@@ -6,13 +6,15 @@
 <small>Sürüm {{.Version}}</small>
 <p>Belge bağlantısı gerekmez. Kartlar ve PIN kullanılmadan görünen imza sertifikaları bu bilgisayarda okunur. İmza atılmaz.</p>
 <button id="refresh">Kartları yeniden listele</button><p id="status" role="status"></p><ul id="cards"></ul>
+{{template "driver-help" .}}
 <script>
 const button=document.getElementById('refresh'),status=document.getElementById('status'),cards=document.getElementById('cards');
-async function refresh(){button.disabled=true;cards.replaceChildren();status.textContent='Kartlar ve sertifikalar okunuyor…';try{
+async function refresh(){document.getElementById('driver-help').hidden=true;document.getElementById('driver-retry').disabled=true;button.disabled=true;cards.replaceChildren();status.textContent='Kartlar ve sertifikalar okunuyor…';try{
 const response=await fetch('/api/local-cards',{method:'POST',headers:{'X-Bridge-Token':'{{.Token}}'}});
 const data=await response.json();if(!response.ok)throw new Error(data.message||'Kartlar okunamadı.');
 for(const label of data.cards){const item=document.createElement('li');item.textContent=label;cards.append(item);}
+document.getElementById('driver-help').hidden=!!data.cards.length;
 status.textContent=data.cards.length?'Kart ve sertifika bilgileri aşağıda.':'Kart bulunamadı. Kartı takıp yeniden listeleyin.';
-}catch(error){status.textContent=error.message;}finally{button.disabled=false;}}
+}catch(error){status.textContent=error.message;document.getElementById('driver-help').hidden=false;}finally{button.disabled=false;document.getElementById('driver-retry').disabled=false;}}
 button.addEventListener('click',refresh);refresh();
 </script></html>
