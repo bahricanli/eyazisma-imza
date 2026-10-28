@@ -117,7 +117,9 @@ func main() {
 		log.Fatalf("ayar dosyası okunamadı (%s): %v", path, err)
 	}
 
-	bridge := &server.Server{Engine: engine.Native{Driver: *driver}, Portal: portal.New(), Config: settings, AllowPFX: *allowPFX, Version: version}
+	var parameters []string
+	flag.Visit(func(option *flag.Flag) { parameters = append(parameters, "--"+option.Name) })
+	bridge := &server.Server{Parameters: parameters, Engine: engine.Native{Driver: *driver}, Portal: portal.New(), Config: settings, AllowPFX: *allowPFX, Version: version}
 
 	// Only this computer can reach the bridge.
 	address := fmt.Sprintf("127.0.0.1:%d", *port)

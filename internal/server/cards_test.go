@@ -124,3 +124,14 @@ func TestLocalCardInspectionNeedsNoPortalAndCannotCreateSigningChoices(t *testin
 		t.Fatal("inspection allowed signing")
 	}
 }
+
+func TestVersionLabelShowsPlatformAndFlagNames(t *testing.T) {
+	s := &Server{Version: "v0.2.4", Parameters: []string{"--cards-ui", "--port"}}
+	label := s.versionLabel()
+	if !strings.HasPrefix(label, "v0.2.4 - ") || !strings.HasSuffix(label, " - --cards-ui - --port") {
+		t.Fatalf("unexpected version label: %s", label)
+	}
+	if !strings.Contains(label, "/") {
+		t.Fatal("missing operating system/architecture")
+	}
+}

@@ -13,6 +13,7 @@ import (
 	"html/template"
 	"net"
 	"net/http"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -32,8 +33,9 @@ type Server struct {
 	Portal *portal.Client
 	Config *config.Config
 	// AllowPFX lets a key be loaded from a file instead of a card; for testing only.
-	AllowPFX bool
-	Version  string
+	AllowPFX   bool
+	Version    string
+	Parameters []string
 
 	hardware sync.Mutex
 	choices  map[string]cardChoice
@@ -78,7 +80,7 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'")
 	w.Header().Set("Referrer-Policy", "no-referrer")
-	_ = s.template.Execute(w, map[string]any{"Token": s.token, "AllowPFX": s.AllowPFX, "Version": s.Version})
+	_ = s.template.Execute(w, map[string]any{"Token": s.token, "AllowPFX": s.AllowPFX, "Version": s.versionLabel()})
 }
 
 // status lets a portal page see that the bridge is running. It gives away
@@ -313,4 +315,11 @@ func fail(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]string{"message": message})
+}
+
+// versionLabel includes flag names only; flag values may contain private paths.
+func (s *Server) versionLabel() string {
+	parts := []string{s.Version, runtime.GOOS + "/" + runtime.GOARCH}
+	parts = append(parts, s.Parameters...)
+	return strings.Join(parts, " - ")
 }
