@@ -23,6 +23,9 @@ type CardSelector interface {
 // CardsInProcess is used only by the isolated, PIN-free scanner subprocess.
 func (e Native) CardsInProcess() ([]Card, error) {
 	if len(token.Drivers(e.Driver)) == 0 {
+		if e.Driver == "opensc" {
+			return nil, errors.New("OpenSC sürücüsü bulunamadı. İşletim sisteminize ve uygulamanın mimarisine uygun OpenSC kurun veya --pkcs11 ile sürücü dosyasını belirtin")
+		}
 		return nil, errors.New("akıllı kart sürücüsü (PKCS#11) bulunamadı; sertifika sağlayıcınızın sürücüsünü kurun")
 	}
 	cards, problems := token.List(e.Driver)

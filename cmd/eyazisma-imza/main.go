@@ -46,11 +46,18 @@ func main() {
 	disableHTTPS := flag.Bool("no-https", false, "HTTPS sertifikasını sistemden ve bu bilgisayardan kaldır")
 	install := flag.Bool("install", false, "uygulamayı oturum açılışında arka planda başlayacak şekilde kaydet ve başlat")
 	uninstall := flag.Bool("uninstall", false, "oturum açılışındaki kaydı kaldır ve arka plandaki uygulamayı durdur")
+	openSC := flag.Bool("opensc", false, "yalnız OpenSC sürücüsünü kullan; --cards-ui ile PIN kullanmadan kart uyumunu kontrol et")
 	cardsUI := flag.Bool("cards-ui", false, "belge bağlantısı ve PIN olmadan kart ve sertifika ekranını aç")
 	listCards := flag.Bool("cards", false, "takılı kartları ve PIN'siz görünen sertifikaları listele ve çık (PIN kullanılmaz)")
 	scanJSON := flag.Bool("cards-json", false, "iç kullanım: PIN kullanmadan kart seçeneklerini JSON olarak listele")
 	showVersion := flag.Bool("version", false, "sürümü yaz ve çık")
 	flag.Parse()
+	if *openSC {
+		if *driver != "" {
+			log.Fatal("--opensc ile --pkcs11 veya EYAZISMA_IMZA_PKCS11 birlikte kullanılamaz")
+		}
+		*driver = "opensc"
+	}
 
 	if *scanJSON {
 		choices, err := (engine.Native{Driver: *driver}).CardsInProcess()

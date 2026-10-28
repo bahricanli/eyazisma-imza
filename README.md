@@ -59,6 +59,7 @@ Seçenekler:
 | `--no-browser` | Sayfayı kendiliğinden açma |
 | `--https` / `--no-https` | Bu bilgisayara özel HTTPS sertifikasını üret ve tanıt / kaldır |
 | `--install` / `--uninstall` | Oturum açılışında arka planda başlat / başlatma (macOS: launchd, Linux: masaüstü oturumu, Windows: başlangıç kaydı) |
+| `--opensc` | Yalnız OpenSC ile tara ve imzala. `--cards-ui --opensc` ile belge/PIN olmadan kart desteğini kontrol et. OpenSC ayrıca kurulu olmalıdır; her kart desteklenmez. `--pkcs11` ile birlikte kullanılmaz. |
 | `--cards-ui` | Belge bağlantısı olmadan kart ve sertifikaları tarayıcıda gösterir; PIN kullanılmaz. Çalışan uygulama varsa `http://127.0.0.1:51515/cards` adresini açın veya `--port 51525` kullanın. |
 | `--cards` | Takılı kartları ve PIN'siz görünen sertifikaları listele |
 | `--sign <dosya>` | Portal olmadan bir dosyayı imzala (`--out`, `--tsa` ile) |
@@ -111,3 +112,22 @@ Kart erişimi testi yazılımsal bir token ister (Debian/Ubuntu: `apt-get instal
 ## Lisans
 
 MIT
+
+### Sağlayıcı sürücüsü olmadan OpenSC
+
+Normal mod, sağlayıcı sürücülerinin yanında kurulu OpenSC sürücülerini de otomatik dener.
+Yalnız OpenSC ile kart desteğini kontrol etmek için:
+
+```sh
+# macOS Apple Silicon
+./eyazisma-imza-macos-arm64 --cards-ui --opensc
+# Linux
+./eyazisma-imza-linux-amd64 --cards-ui --opensc
+# Windows PowerShell
+.\eyazisma-imza-windows-amd64.exe --cards-ui --opensc
+```
+
+Kart ve imza sertifikası listelenirse aynı `--opensc` seçeneğiyle portal üzerinden
+imzalamaya devam edilebilir. Kartın PIN kullanmadan listelenmesi, gerçek imzalama
+uyumunun henüz sınandığı anlamına gelmez. OpenSC kartı desteklemiyorsa sağlayıcının
+uygun sürücüsü gerekir. Uygulama OpenSC'yi kendiliğinden kurmaz.

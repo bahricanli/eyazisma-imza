@@ -13,6 +13,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -27,6 +28,7 @@ var drivers = map[string][]string{
 		`C:\Windows\System32\aetpkss1.dll`,
 		`C:\Windows\System32\OcsPkcs11Wrapper.dll`,
 		`C:\Windows\System32\opensc-pkcs11.dll`,
+		`C:\Program Files\OpenSC Project\OpenSC\pkcs11\opensc-pkcs11.dll`,
 	},
 	"darwin": {
 		"/usr/local/lib/libakisp11.dylib",
@@ -39,6 +41,8 @@ var drivers = map[string][]string{
 	},
 	"linux": {
 		"/usr/lib/libakisp11.so",
+		"/usr/lib/pkcs11/opensc-pkcs11.so",
+		"/usr/lib64/pkcs11/opensc-pkcs11.so",
 		"/usr/local/lib/libakisp11.so",
 		"/usr/lib/libeTPkcs11.so",
 		"/usr/lib/libeToken.so",
@@ -63,13 +67,16 @@ type Token struct {
 // ones present on this computer.
 func Drivers(only string) []string {
 	candidates := drivers[runtime.GOOS]
-	if only != "" {
+	if only != "" && only != "opensc" {
 		candidates = []string{only}
 	}
 
 	var found []string
 
 	for _, path := range candidates {
+		if only == "opensc" && !strings.Contains(strings.ToLower(filepath.Base(path)), "opensc-pkcs11") {
+			continue
+		}
 		if _, err := os.Stat(path); err == nil {
 			found = append(found, path)
 		}

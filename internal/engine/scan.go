@@ -19,6 +19,9 @@ import (
 func (e Native) Cards() ([]Card, error) {
 	drivers := token.Drivers(e.Driver)
 	if len(drivers) == 0 {
+		if e.Driver == "opensc" {
+			return nil, errors.New("OpenSC sürücüsü bulunamadı. İşletim sisteminize ve uygulamanın mimarisine uygun OpenSC kurun veya --pkcs11 ile sürücü dosyasını belirtin")
+		}
 		return nil, errors.New("akıllı kart sürücüsü (PKCS#11) bulunamadı; sertifika sağlayıcınızın sürücüsünü kurun")
 	}
 	executable, err := os.Executable()
