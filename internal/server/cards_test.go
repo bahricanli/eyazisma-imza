@@ -96,3 +96,31 @@ func TestCardRescanInvalidatesOldChoicesAndUsesTheSameOriginGuard(t *testing.T) 
 		t.Fatal("stale choice used PIN")
 	}
 }
+
+func TestLocalCardInspectionNeedsNoPortalAndCannotCreateSigningChoices(t *testing.T) {
+	signer := &selectingEngine{choices: []engine.Card{{Label: "Example card — Example signer"}}}
+	b := startWithEngine(t, false, signer)
+	status, result := b.call("/api/local-cards", map[string]string{}, nil)
+	if status != http.StatusOK || len(result["cards"].([]any)) != 1 || signer.listed != 1 {
+		t.Fatalf("local inspection: %d %v", status, result)
+	}
+	if len(signer.opened) != 0 {
+		t.Fatal("inspection opened a PIN session")
+	}
+	for _, headers := range []map[string]string{{"X-Bridge-Token": ""}, {"Origin": "https://evil.example"}} {
+		if status, _ := b.call("/api/local-cards", map[string]string{}, headers); status != http.StatusForbidden {
+			t.Fatal("unguarded local inspection")
+		}
+	}
+	if signer.listed != 1 {
+		t.Fatal("forbidden request scanned cards")
+	}
+	link := "https://portal.example/imza/test"
+	b.call("/api/trust", map[string]string{"link": link}, nil)
+	if status, _ := b.call("/api/sign", map[string]string{"link": link, "source": "card", "card_id": "Example card", "pin": "test-pin"}, nil); status != http.StatusUnprocessableEntity {
+		t.Fatal("inspection created a signing choice")
+	}
+	if len(signer.opened) != 0 {
+		t.Fatal("inspection allowed signing")
+	}
+}

@@ -3,7 +3,9 @@ package server
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"html/template"
 	"net/http"
+	"runtime"
 
 	"github.com/bahricanli/eyazisma-imza/internal/engine"
 )
@@ -52,4 +54,38 @@ func (s *Server) cards(w http.ResponseWriter, r *http.Request) {
 		result = append(result, item{ID: id, Label: card.Label})
 	}
 	respond(w, map[string]any{"cards": result})
+}
+
+// cardIndex is a local diagnostic page; no portal or signing session is needed.
+func (s *Server) cardIndex(w http.ResponseWriter, r *http.Request) {
+	if !local(r.Host) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	_ = template.Must(template.New("cards").Parse(cardsPage)).Execute(w, map[string]string{"Token": s.token, "Version": s.Version, "Architecture": runtime.GOARCH})
+}
+
+// localCards never creates signing choices or contacts a portal.
+func (s *Server) localCards(w http.ResponseWriter, r *http.Request) {
+	selector, ok := s.Engine.(engine.CardSelector)
+	if !ok {
+		fail(w, http.StatusUnprocessableEntity, "Bu sürüm kart listelemeyi desteklemiyor.")
+		return
+	}
+	s.hardware.Lock()
+	defer s.hardware.Unlock()
+	cards, err := selector.Cards()
+	if err != nil {
+		fail(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	labels := make([]string, 0, len(cards))
+	for _, card := range cards {
+		labels = append(labels, card.Label)
+	}
+	respond(w, map[string]any{"cards": labels})
 }

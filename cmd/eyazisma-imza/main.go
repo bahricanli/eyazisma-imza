@@ -46,6 +46,7 @@ func main() {
 	disableHTTPS := flag.Bool("no-https", false, "HTTPS sertifikasını sistemden ve bu bilgisayardan kaldır")
 	install := flag.Bool("install", false, "uygulamayı oturum açılışında arka planda başlayacak şekilde kaydet ve başlat")
 	uninstall := flag.Bool("uninstall", false, "oturum açılışındaki kaydı kaldır ve arka plandaki uygulamayı durdur")
+	cardsUI := flag.Bool("cards-ui", false, "belge bağlantısı ve PIN olmadan kart ve sertifika ekranını aç")
 	listCards := flag.Bool("cards", false, "takılı kartları ve PIN'siz görünen sertifikaları listele ve çık (PIN kullanılmaz)")
 	scanJSON := flag.Bool("cards-json", false, "iç kullanım: PIN kullanmadan kart seçeneklerini JSON olarak listele")
 	showVersion := flag.Bool("version", false, "sürümü yaz ve çık")
@@ -120,12 +121,15 @@ func main() {
 
 	// Only this computer can reach the bridge.
 	address := fmt.Sprintf("127.0.0.1:%d", *port)
+	url := "http://" + address + "/"
+	if *cardsUI {
+		url += "cards"
+	}
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatalf("%s dinlenemedi; uygulama zaten açık olabilir: %v", address, err)
 	}
 
-	url := "http://" + address + "/"
 	fmt.Println("e-Yazışma imza uygulaması çalışıyor:", url)
 
 	handler := bridge.Handler()

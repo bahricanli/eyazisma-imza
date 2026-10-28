@@ -24,6 +24,9 @@ import (
 //go:embed page.html
 var page string
 
+//go:embed cards.html
+var cardsPage string
+
 type Server struct {
 	Engine engine.Engine
 	Portal *portal.Client
@@ -52,6 +55,8 @@ func (s *Server) Handler() http.Handler {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.index)
+	mux.HandleFunc("GET /cards", s.cardIndex)
+	mux.HandleFunc("POST /api/local-cards", s.guard(s.localCards))
 	mux.HandleFunc("GET /status", s.status)
 	mux.HandleFunc("OPTIONS /status", s.status)
 	mux.HandleFunc("POST /api/session", s.guard(s.session))

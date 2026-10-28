@@ -59,6 +59,7 @@ Seçenekler:
 | `--no-browser` | Sayfayı kendiliğinden açma |
 | `--https` / `--no-https` | Bu bilgisayara özel HTTPS sertifikasını üret ve tanıt / kaldır |
 | `--install` / `--uninstall` | Oturum açılışında arka planda başlat / başlatma (macOS: launchd, Linux: masaüstü oturumu, Windows: başlangıç kaydı) |
+| `--cards-ui` | Belge bağlantısı olmadan kart ve sertifikaları tarayıcıda gösterir; PIN kullanılmaz. Çalışan uygulama varsa `http://127.0.0.1:51515/cards` adresini açın veya `--port 51525` kullanın. |
 | `--cards` | Takılı kartları ve PIN'siz görünen sertifikaları listele |
 | `--sign <dosya>` | Portal olmadan bir dosyayı imzala (`--out`, `--tsa` ile) |
 | `--config <dosya>` | Güvenilen portalların tutulduğu dosya |
