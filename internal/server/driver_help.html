@@ -3,17 +3,20 @@
 <h2 id="driver-help-title">Kart veya okuyucu bulunamadı mı?</h2>
 <p>Önce USB okuyucuyu ve kartı takıp yeniden deneyin. Okuyucu sürücüsü ile kartın imzalama sürücüsü farklı olabilir.</p>
 <p>Bu uygulama: <strong>{{.Platform}}</strong>. Sürücüyü aynı mimariye uygun seçin. Apple Silicon için ARM64 sürücü yoksa Intel uygulaması ve Rosetta geçici çözüm olabilir.</p>
-<label for="driver-provider">E-imza sağlayıcınız</label>
+<p>Sertifika sağlayıcınız ile kart / USB token markası farklı olabilir. Örneğin e-Güven sertifikası SafeNet USB üzerinde bulunabilir; bu durumda SafeNet Authentication Client gerekir.</p>
+<label for="driver-provider">Kart / USB token türü veya sağlayıcı</label>
 <select id="driver-provider" style="width:100%;padding:8px;font:inherit">
-<option value="">Sağlayıcı seçin</option>
+<option value="">Kart türü veya sağlayıcı seçin</option>
 <option value="https://kamusm.bilgem.tubitak.gov.tr/islemler/surucu_yukleme_servisi/">KamuSM / AKİS — sürücü yükleme servisi</option>
+<option value="https://akiskart.bilgem.tubitak.gov.tr/destek/">AKİS — TÜBİTAK güncel sürücüler (Mac ARM / Intel dahil)</option>
+<option value="https://knowledge.digicert.com/general-information/how-to-download-safenet-authentication-client">SafeNet / eToken — Authentication Client (e-Güven sertifikası dahil)</option>
 <option value="https://www.e-guven.com/">e-Güven — resmî site ve destek</option>
 <option value="https://helpdesk.e-tugra.com.tr/">e-Tuğra — resmî destek</option>
 <option value="https://turktrust.com.tr/gerekli-yazilimlar.html">TÜRKTRUST — gerekli yazılımlar</option>
 <option value="https://github.com/OpenSC/OpenSC/releases">OpenSC — alternatif sürücü</option>
 </select>
 <p><a id="driver-download" hidden target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Resmî kurulum / destek sayfasını aç</a></p>
-<p>Sağlayıcınızın sayfasından işletim sisteminize uygun kart ve gerekiyorsa okuyucu sürücüsünü kurun. Kurulum tamamlanınca bu ekrana dönüp aşağıdaki düğmeye basın. Yeniden başlatma istenirse uygulamayı ve imzalama sürecini yeniden açın.</p>
+<p>Seçtiğiniz destek sayfasından işletim sisteminize uygun kart ve gerekiyorsa okuyucu sürücüsünü kurun. Kurulum tamamlanınca bu ekrana dönüp aşağıdaki düğmeye basın. Yeniden başlatma istenirse uygulamayı ve imzalama sürecini yeniden açın.</p>
 <p>OpenSC her kartı desteklemez. Kurulu OpenSC normal taramada otomatik denenir; yalnız OpenSC ile kontrol için uygulamayı <code>--cards-ui --opensc</code> ile açabilirsiniz.</p>
 <button type="button" id="driver-retry">Kurulumu tamamladım, yeniden tara</button>
 </section>
