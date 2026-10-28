@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/bahricanli/eyazisma-imza/internal/token"
@@ -41,6 +42,9 @@ func (e Native) Cards() ([]Card, error) {
 }
 
 func scanDriver(executable, driver string, timeout time.Duration) ([]Card, error) {
+	if err := driverArchitectureWarning(driver, runtime.GOOS, runtime.GOARCH); err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	command := exec.CommandContext(ctx, executable, "--cards-json", "--pkcs11", driver)
