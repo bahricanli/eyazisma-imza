@@ -148,5 +148,5 @@ Uygulamayı taşırsanız kurulumu yeniden yapın.
 
 Eklenti yerel uygulamayı gerektiğinde başlatır ve mevcut imza/kart ekranını açar.
 PIN, özel anahtar ve PDF içeriği eklentiye aktarılmaz. Portal güven onayı ve
-imza işlemi yerel ekranda devam eder. İlk sürüm yalnız portal.lkd.org.tr ve
-portal.pkd.org.tr imza bağlantılarını kabul eder.
+imza işlemi yerel ekranda devam eder. Herhangi bir HTTPS portalının imza bağlantısı
+kabul edilir; her portal ilk kullanımda yerel ekranda onaylanır.

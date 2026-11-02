@@ -21,7 +21,7 @@ func TestProtocolOnlyLaunchesValidatedLinksAndCardUI(t *testing.T) {
 		request Request
 		ok      bool
 		calls   int
-	}{{Request{Action: "status"}, true, 0}, {Request{Action: "cards"}, true, 1}, {Request{Action: "open", Link: good}, true, 1}, {Request{Action: "open", Link: "https://evil.example/imza/abcdefghijklmnop"}, false, 0}, {Request{Action: "sign", Link: good}, false, 0}}
+	}{{Request{Action: "status"}, true, 0}, {Request{Action: "cards"}, true, 1}, {Request{Action: "open", Link: good}, true, 1}, {Request{Action: "open", Link: "https://belge.dernek.org/imza/abcdefghijklmnop"}, true, 1}, {Request{Action: "open", Link: "http://belge.dernek.org/imza/abcdefghijklmnop"}, false, 0}, {Request{Action: "sign", Link: good}, false, 0}}
 	for _, test := range cases {
 		var out bytes.Buffer
 		calls := 0
@@ -39,7 +39,7 @@ func TestProtocolOnlyLaunchesValidatedLinksAndCardUI(t *testing.T) {
 	}
 }
 func TestLinkValidationRejectsCredentialsPortsQueriesAndEncodedPaths(t *testing.T) {
-	for _, link := range []string{"http://portal.lkd.org.tr/imza/abcdefghijklmnop", "https://portal.lkd.org.tr:443/imza/abcdefghijklmnop", "https://user@portal.lkd.org.tr/imza/abcdefghijklmnop", "https://portal.lkd.org.tr/imza/abcdefghijklmnop?secret=1", "https://portal.lkd.org.tr/imza/%61bcdefghijklmnop", "https://portal.lkd.org.tr/imza/abcdefghijklmnop#x"} {
+	for _, link := range []string{"http://portal.lkd.org.tr/imza/abcdefghijklmnop", "https://portal.lkd.org.tr:443/imza/abcdefghijklmnop", "https://user@portal.lkd.org.tr/imza/abcdefghijklmnop", "https://portal.lkd.org.tr/imza/abcdefghijklmnop?secret=1", "https://portal.lkd.org.tr/imza/%61bcdefghijklmnop", "https://portal.lkd.org.tr/imza/abcdefghijklmnop#x", "https:///imza/abcdefghijklmnop"} {
 		if ValidateLink(link) == nil {
 			t.Fatal("accepted", link)
 		}

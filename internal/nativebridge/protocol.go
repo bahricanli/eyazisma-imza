@@ -33,8 +33,9 @@ func ValidateLink(link string) error {
 	if err != nil || u.Scheme != "https" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.RawPath != "" || !tokenPath.MatchString(u.Path) {
 		return errors.New("geçersiz imza bağlantısı")
 	}
-	if u.Host != "portal.lkd.org.tr" && u.Host != "portal.pkd.org.tr" {
-		return errors.New("bu portal tarayıcı bağlantısında desteklenmiyor")
+	// Portals are not listed here: the user approves each origin on the local screen.
+	if u.Hostname() == "" || u.Port() == "443" {
+		return errors.New("geçersiz imza bağlantısı")
 	}
 	return nil
 }
