@@ -6,6 +6,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"errors"
+	"fmt"
 
 	"github.com/bahricanli/eyazisma-imza/internal/cades"
 	"github.com/bahricanli/eyazisma-imza/internal/token"
@@ -47,8 +48,8 @@ type Engine interface {
 	OpenCard(pin string) (*Key, error)
 	// OpenPFX opens a key from a PKCS#12 file; meant for testing.
 	OpenPFX(data []byte, password string) (*Key, error)
-	// Sign returns a CAdES signature that carries the content inside it and
-	// the level it reached: the highest one supported up to the level asked for.
+	// Sign returns a CAdES signature of the level asked for that carries the
+	// content inside it, with that level; it fails rather than sign below it.
 	Sign(content []byte, key *Key, profile Profile, timestamp *Timestamp) ([]byte, Profile, error)
 }
 
@@ -85,14 +86,23 @@ func (Native) OpenPFX(data []byte, password string) (*Key, error) {
 	return &Key{Certificate: certificate, Signer: signer, Close: func() {}}, nil
 }
 
-// Sign reaches level T at most: the long-term levels are not built yet.
+// Sign refuses a level it cannot reach: a weaker signature must not pass for
+// the one the portal asked for. The long-term levels are not built yet.
 func (Native) Sign(content []byte, key *Key, profile Profile, timestamp *Timestamp) ([]byte, Profile, error) {
 	options := cades.Options{}
 	reached := ProfileBES
 
-	if profile != ProfileBES && profile != "" && timestamp != nil && timestamp.URL != "" {
+	switch profile {
+	case ProfileBES, "":
+	case ProfileT:
+		if timestamp == nil || timestamp.URL == "" {
+			return nil, "", errors.New("Zaman damgalı imza isteniyor ama zaman damgası hizmeti tanımlı değil. İmza atılmadı.")
+		}
+
 		options.Timestamper = cades.HTTPTimestamper{URL: timestamp.URL, User: timestamp.User, Password: timestamp.Password}
 		reached = ProfileT
+	default:
+		return nil, "", fmt.Errorf("Portal %s düzeyinde imza istiyor; uygulama bu düzeyde imza atamıyor. İmza atılmadı.", profile)
 	}
 
 	signature, err := cades.Sign(content, key.Certificate, key.Signer, options)

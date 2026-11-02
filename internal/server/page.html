@@ -189,7 +189,6 @@
             show('step-link');
             var levels = { BES: 'zaman damgasız (BES)', T: 'zaman damgalı (T)', XL: 'uzun dönemli (XL)', A: 'arşiv (A)' };
             var text = data.message + ' İmzalayan: ' + data.signer + '. İmza düzeyi: ' + (levels[data.profile] || data.profile) + '.';
-            if (data.asked && data.asked !== data.profile) { text += ' Portal ' + data.asked + ' düzeyini istemişti; uygulama henüz o düzeyde imza atamıyor.'; }
             notice(text + (data.complete ? ' Paket tamamlandı.' : ''), true);
         }).catch(function (error) { notice(error.message, false); }).then(updateCardState);
     }

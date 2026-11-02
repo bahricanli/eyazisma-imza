@@ -13,7 +13,7 @@ Dernek portalının yazışma modülü için **imza köprüsü**: imzacının bi
 | İmza ilkesi (profil) tanımlayıcısı | Yok |
 | Kamu SM zaman damgası hizmetinin kendine özgü kimlik doğrulaması | Yok; HTTP temel kimlik doğrulaması kullanan hizmetler desteklenir |
 
-Portal uzun dönemli imza istediğinde uygulama ulaşabildiği en yüksek düzeyde (zaman damgalı) imza atar ve bunu imzacıya söyler.
+Uygulama yalnız portalın istediği düzeyde imza atar. Portal uzun dönemli imza (XL, A) isterse ya da zaman damgalı imza için hizmet tanımlı değilse imza atılmaz ve hata gösterilir.
 
 ## Nasıl çalışır
 

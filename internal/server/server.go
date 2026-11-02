@@ -247,7 +247,6 @@ func (s *Server) sign(w http.ResponseWriter, r *http.Request) {
 		"complete": result.Complete,
 		"signer":   key.Certificate.Subject.CommonName,
 		"profile":  string(reached),
-		"asked":    session.Profile,
 	})
 }
 

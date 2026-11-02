@@ -26,6 +26,7 @@ const digest = `<?xml version="1.0" encoding="UTF-8"?><PaketOzeti Id="4F9E2E9B-F
 // fakePortal answers like the portal's signing endpoints and keeps what it was sent.
 type fakePortal struct {
 	lock      sync.Mutex
+	profile   string
 	timestamp map[string]string
 	signature []byte
 	fetched   int
@@ -49,7 +50,7 @@ func (p *fakePortal) handler() http.Handler {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"organization": "Örnek Derneği", "document_no": "06-061-115-2026-22", "subject": "Şenlik daveti",
 			"step": "signature", "step_label": "Elektronik imza", "filename": "PaketOzeti.xml",
-			"content": base64.StdEncoding.EncodeToString([]byte(digest)), "profile": "XL", "timestamp": p.timestamp,
+			"content": base64.StdEncoding.EncodeToString([]byte(digest)), "profile": p.profile, "timestamp": p.timestamp,
 		})
 	})
 	mux.HandleFunc("POST /imza/{token}", func(w http.ResponseWriter, r *http.Request) {
@@ -195,7 +196,7 @@ func TestSigningThroughThePortal(t *testing.T) {
 
 func TestSignatureIsTimestampedWhenThePortalLendsAService(t *testing.T) {
 	service := testpki.TimestampService(t, "1234", "gizli")
-	fake := &fakePortal{timestamp: map[string]string{"url": service.URL, "user": "1234", "password": "gizli"}}
+	fake := &fakePortal{profile: "T", timestamp: map[string]string{"url": service.URL, "user": "1234", "password": "gizli"}}
 	portalServer := httptest.NewServer(fake.handler())
 	defer portalServer.Close()
 
@@ -203,13 +204,12 @@ func TestSignatureIsTimestampedWhenThePortalLendsAService(t *testing.T) {
 	link := portalServer.URL + "/imza/dogru"
 	b.call("/api/trust", map[string]string{"link": link}, nil)
 
-	if _, result := b.call("/api/session", map[string]string{"link": link}, nil); result["timestamp"] != true || result["profile"] != "XL" {
+	if _, result := b.call("/api/session", map[string]string{"link": link}, nil); result["timestamp"] != true || result["profile"] != "T" {
 		t.Fatalf("oturum bilgisi: %v", result)
 	}
 
-	// The long-term level is not built yet: the signature is time-stamped and the page is told so.
 	status, result := b.call("/api/sign", map[string]string{"link": link, "source": "pfx", "pfx": pfx(t), "password": "parola"}, nil)
-	if status != http.StatusOK || result["profile"] != "T" || result["asked"] != "XL" {
+	if status != http.StatusOK || result["profile"] != "T" {
 		t.Fatalf("imza: %d %v", status, result)
 	}
 
@@ -219,8 +219,34 @@ func TestSignatureIsTimestampedWhenThePortalLendsAService(t *testing.T) {
 	}
 }
 
+// A level that cannot be reached stops the signature: nothing weaker reaches the portal.
+func TestSignatureIsNotSentBelowTheLevelAsked(t *testing.T) {
+	service := testpki.TimestampService(t, "1234", "gizli")
+	account := map[string]string{"url": service.URL, "user": "1234", "password": "gizli"}
+
+	for name, fake := range map[string]*fakePortal{
+		"X Long":                {profile: "XL", timestamp: account},
+		"arşiv":                 {profile: "A", timestamp: account},
+		"zaman damgası hizmeti": {profile: "T"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			portalServer := httptest.NewServer(fake.handler())
+			defer portalServer.Close()
+
+			b := start(t, true)
+			link := portalServer.URL + "/imza/dogru"
+			b.call("/api/trust", map[string]string{"link": link}, nil)
+
+			status, result := b.call("/api/sign", map[string]string{"link": link, "source": "pfx", "pfx": pfx(t), "password": "parola"}, nil)
+			if status != http.StatusUnprocessableEntity || !strings.Contains(result["message"].(string), "İmza atılmadı") || fake.signature != nil {
+				t.Fatalf("istenen düzeyin altında imza gönderildi: %d %v", status, result)
+			}
+		})
+	}
+}
+
 func TestSignatureIsNotSentWhenTheTimestampServiceFails(t *testing.T) {
-	fake := &fakePortal{timestamp: map[string]string{"url": "http://127.0.0.1:1/zd", "user": "1234", "password": "gizli"}}
+	fake := &fakePortal{profile: "T", timestamp: map[string]string{"url": "http://127.0.0.1:1/zd", "user": "1234", "password": "gizli"}}
 	portalServer := httptest.NewServer(fake.handler())
 	defer portalServer.Close()
 
