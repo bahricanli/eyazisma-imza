@@ -33,6 +33,11 @@ var drivers = map[string][]string{
 	"darwin": {
 		"/usr/local/lib/libakisp11.dylib",
 		"/Library/Frameworks/eToken.framework/Versions/Current/libeToken.dylib",
+		"/Library/Frameworks/eToken.framework/Versions/Current/libeTPkcs11.dylib",
+		"/Library/Frameworks/eToken.framework/Versions/Current/libIDPrimePKCS11.dylib",
+		"/usr/local/lib/libeTPkcs11.dylib",
+		"/usr/local/lib/libIDPrimePKCS11.dylib",
+		"/usr/local/lib/libgtop11dotnet.dylib",
 		"/usr/local/lib/libaetpkss.dylib",
 		"/usr/local/lib/libOcsPkcs11Wrapper.dylib",
 		"/Library/OpenSC/lib/opensc-pkcs11.so",
