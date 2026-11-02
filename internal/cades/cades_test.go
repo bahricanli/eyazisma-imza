@@ -60,6 +60,25 @@ func TestSignatureVerifiesAndBindsTheCertificate(t *testing.T) {
 	}
 }
 
+// The identifier İmzager writes in its own signatures, not plain rsaEncryption.
+func TestRsaSignatureNamesItsHash(t *testing.T) {
+	certificate, key := testpki.Certificate(t, "Ayşe Yılmaz", false)
+
+	signature, err := Sign(content, certificate, key, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	withHash, err := asn1.Marshal(oidSHA256WithRSA)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Contains(signature, withHash) {
+		t.Fatal("imza algoritması sha256WithRSAEncryption değil")
+	}
+}
+
 func TestSignedAttributesAreInDerOrder(t *testing.T) {
 	certificate, key := testpki.Certificate(t, "Ayşe Yılmaz", false)
 

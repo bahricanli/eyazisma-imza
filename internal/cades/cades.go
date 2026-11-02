@@ -32,7 +32,7 @@ var (
 	oidSigningCertificateV2 = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 16, 2, 47}
 	oidSignatureTimeStamp   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 16, 2, 14}
 	oidSHA256               = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 1}
-	oidRSAEncryption        = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
+	oidSHA256WithRSA        = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 11}
 	oidECDSAWithSHA256      = asn1.ObjectIdentifier{1, 2, 840, 10045, 4, 3, 2}
 )
 
@@ -247,7 +247,7 @@ func encodeAttributes(attributes []attribute) ([]byte, error) {
 func signatureAlgorithmOf(certificate *x509.Certificate) (pkix.AlgorithmIdentifier, error) {
 	switch certificate.PublicKey.(type) {
 	case *rsa.PublicKey:
-		return pkix.AlgorithmIdentifier{Algorithm: oidRSAEncryption, Parameters: asn1.NullRawValue}, nil
+		return pkix.AlgorithmIdentifier{Algorithm: oidSHA256WithRSA, Parameters: asn1.NullRawValue}, nil
 	case *ecdsa.PublicKey:
 		return pkix.AlgorithmIdentifier{Algorithm: oidECDSAWithSHA256}, nil
 	}
