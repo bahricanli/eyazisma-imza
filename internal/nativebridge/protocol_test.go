@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -61,7 +62,8 @@ func TestFramesAreBoundedAndCallerIsRestricted(t *testing.T) {
 	if !Called([]string{"chrome-extension://" + ChromeID + "/"}, unpacked) || !Called([]string{"chrome-extension://" + unpacked + "/"}, unpacked) {
 		t.Fatal("store and registered Chrome IDs must both be accepted")
 	}
-	if !Called([]string{"/x/" + HostName + ".json", FirefoxID}, unpacked) || Called([]string{"/x/" + HostName + ".json", "other@example.com"}, unpacked) {
+	manifest := filepath.Join(t.TempDir(), HostName+".json")
+	if !Called([]string{manifest, FirefoxID}, unpacked) || Called([]string{manifest, "other@example.com"}, unpacked) {
 		t.Fatal("Firefox caller check failed")
 	}
 }
