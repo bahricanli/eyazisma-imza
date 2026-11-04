@@ -54,7 +54,12 @@ func Install(executable string, settings Settings) error {
 	if err := writeJSON(path, settings); err != nil {
 		return err
 	}
-	chrome := map[string]any{"name": HostName, "description": "e-Yazışma yerel imza uygulaması", "path": executable, "type": "stdio", "allowed_origins": []string{"chrome-extension://" + settings.ChromeID + "/"}}
+	// The store extension stays allowed when another ID (an unpacked copy) is installed too.
+	origins := []string{"chrome-extension://" + ChromeID + "/"}
+	if settings.ChromeID != ChromeID {
+		origins = append(origins, "chrome-extension://"+settings.ChromeID+"/")
+	}
+	chrome := map[string]any{"name": HostName, "description": "e-Yazışma yerel imza uygulaması", "path": executable, "type": "stdio", "allowed_origins": origins}
 	firefox := map[string]any{"name": HostName, "description": "e-Yazışma yerel imza uygulaması", "path": executable, "type": "stdio", "allowed_extensions": []string{FirefoxID}}
 	var chromePaths, firefoxPaths []string
 	switch runtime.GOOS {
@@ -105,7 +110,7 @@ func writeJSON(path string, value any) error {
 
 // Called recognizes only invocations made by the registered browser manifests.
 func Called(arguments []string, chromeID string) bool {
-	if len(arguments) > 0 && arguments[0] == "chrome-extension://"+chromeID+"/" {
+	if len(arguments) > 0 && (arguments[0] == "chrome-extension://"+ChromeID+"/" || arguments[0] == "chrome-extension://"+chromeID+"/") {
 		return true
 	}
 	if len(arguments) == 2 && filepath.IsAbs(arguments[0]) && filepath.Ext(arguments[0]) == ".json" && arguments[1] == FirefoxID {

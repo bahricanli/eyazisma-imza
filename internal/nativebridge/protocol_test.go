@@ -56,4 +56,12 @@ func TestFramesAreBoundedAndCallerIsRestricted(t *testing.T) {
 	if !Called([]string{"chrome-extension://" + ChromeID + "/"}, ChromeID) || Called([]string{"chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"}, ChromeID) {
 		t.Fatal("caller check failed")
 	}
+	// An unpacked copy registered with its own ID must not lock out the store extension.
+	unpacked := "pgengianfoeihehebpjilcckgpadgohk"
+	if !Called([]string{"chrome-extension://" + ChromeID + "/"}, unpacked) || !Called([]string{"chrome-extension://" + unpacked + "/"}, unpacked) {
+		t.Fatal("store and registered Chrome IDs must both be accepted")
+	}
+	if !Called([]string{"/x/" + HostName + ".json", FirefoxID}, unpacked) || Called([]string{"/x/" + HostName + ".json", "other@example.com"}, unpacked) {
+		t.Fatal("Firefox caller check failed")
+	}
 }
