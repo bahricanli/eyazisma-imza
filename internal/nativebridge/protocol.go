@@ -13,7 +13,7 @@ import (
 
 const HostName = "com.bahricanli.eyazisma_imza"
 const FirefoxID = "eyazisma-imza@bahricanli.com"
-const ChromeID = "gdfahhbabofbcgphlaphkegkbahlgjhl"
+const ChromeID = "pgengianfoeihehebpjilcckgpadgohk"
 const maxMessage = 64 * 1024
 
 var tokenPath = regexp.MustCompile(`^/imza/[A-Za-z0-9_-]{16,256}$`)

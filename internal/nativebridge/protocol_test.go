@@ -58,7 +58,7 @@ func TestFramesAreBoundedAndCallerIsRestricted(t *testing.T) {
 		t.Fatal("caller check failed")
 	}
 	// An unpacked copy registered with its own ID must not lock out the store extension.
-	unpacked := "pgengianfoeihehebpjilcckgpadgohk"
+	unpacked := "gdfahhbabofbcgphlaphkegkbahlgjhl"
 	if !Called([]string{"chrome-extension://" + ChromeID + "/"}, unpacked) || !Called([]string{"chrome-extension://" + unpacked + "/"}, unpacked) {
 		t.Fatal("store and registered Chrome IDs must both be accepted")
 	}
