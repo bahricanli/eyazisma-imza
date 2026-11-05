@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -30,6 +31,8 @@ type fakePortal struct {
 	timestamp map[string]string
 	signature []byte
 	fetched   int
+	// detached makes the portal send only the digest of its content, as a KEP send does.
+	detached bool
 }
 
 func (p *fakePortal) handler() http.Handler {
@@ -47,11 +50,16 @@ func (p *fakePortal) handler() http.Handler {
 			return
 		}
 
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		session := map[string]any{
 			"organization": "Örnek Derneği", "document_no": "06-061-115-2026-22", "subject": "Şenlik daveti",
 			"step": "signature", "step_label": "Elektronik imza", "filename": "PaketOzeti.xml",
 			"content": base64.StdEncoding.EncodeToString([]byte(digest)), "profile": p.profile, "timestamp": p.timestamp,
-		})
+		}
+		if p.detached {
+			sum := sha256.Sum256([]byte(digest))
+			session["content"], session["digest"] = "", base64.StdEncoding.EncodeToString(sum[:])
+		}
+		_ = json.NewEncoder(w).Encode(session)
 	})
 	mux.HandleFunc("POST /imza/{token}", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -325,5 +333,39 @@ func TestTheApiAnswersOnlyToItsOwnPage(t *testing.T) {
 	b.call("/api/trust", body, nil)
 	if status, result := b.call("/api/sign", map[string]string{"link": body["link"], "source": "pfx", "pfx": "AAAA"}, nil); status != http.StatusUnprocessableEntity || !strings.Contains(result["message"].(string), "kapalı") {
 		t.Fatalf("dosyadan sertifika: %d %v", status, result)
+	}
+}
+
+// A KEP send hands out only the digest of the message; the signature is
+// detached and verifies against the content the portal kept.
+func TestDetachedSignatureOverAPortalDigest(t *testing.T) {
+	fake := &fakePortal{detached: true}
+	portalServer := httptest.NewServer(fake.handler())
+	defer portalServer.Close()
+
+	b := start(t, true)
+	link := portalServer.URL + "/imza/dogru"
+
+	if status, _ := b.call("/api/trust", map[string]string{"link": link}, nil); status != http.StatusOK {
+		t.Fatalf("portala güvenilemedi: %d", status)
+	}
+
+	status, result := b.call("/api/sign", map[string]string{"link": link, "source": "pfx", "pfx": pfx(t), "password": "parola"}, nil)
+	if status != http.StatusOK || result["profile"] != "BES" {
+		t.Fatalf("imza: %d %v", status, result)
+	}
+
+	parsed, err := pkcs7.Parse(fake.signature)
+	if err != nil {
+		t.Fatalf("imza çözümlenemedi: %v", err)
+	}
+
+	if len(parsed.Content) != 0 {
+		t.Fatal("ayrık imza içeriği taşıyor")
+	}
+
+	parsed.Content = []byte(digest)
+	if err := parsed.Verify(); err != nil {
+		t.Fatalf("ayrık imza içerikle doğrulanmadı: %v", err)
 	}
 }

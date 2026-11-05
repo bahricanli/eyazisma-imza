@@ -82,7 +82,8 @@ func TestRsaSignatureNamesItsHash(t *testing.T) {
 func TestSignedAttributesAreInDerOrder(t *testing.T) {
 	certificate, key := testpki.Certificate(t, "Ayşe Yılmaz", false)
 
-	attributes, err := signedAttributes(content, certificate, Options{}.Time)
+	contentDigest := sha256.Sum256(content)
+	attributes, err := signedAttributes(contentDigest[:], certificate, Options{}.Time)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,3 +157,31 @@ func TestSignatureIsNotReturnedWithoutTheTimestamp(t *testing.T) {
 type wrongTimestamper struct{}
 
 func (wrongTimestamper) Timestamp([]byte) ([]byte, error) { return nil, errors.New("hata") }
+
+func TestDigestSignatureIsDetached(t *testing.T) {
+	certificate, key := testpki.Certificate(t, "Ayşe Yılmaz", false)
+	digest := sha256.Sum256(content)
+
+	signature, err := SignDigest(digest[:], certificate, key, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parsed, err := pkcs7.Parse(signature)
+	if err != nil {
+		t.Fatalf("imza çözümlenemedi: %v", err)
+	}
+
+	if len(parsed.Content) != 0 {
+		t.Fatal("ayrık imza içeriği taşıyor")
+	}
+
+	parsed.Content = content
+	if err := parsed.Verify(); err != nil {
+		t.Fatalf("ayrık imza doğrulanamadı: %v", err)
+	}
+
+	if _, err := SignDigest(digest[:16], certificate, key, Options{}); err == nil {
+		t.Fatal("SHA-256 olmayan özet imzalandı")
+	}
+}

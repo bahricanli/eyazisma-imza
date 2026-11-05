@@ -51,6 +51,9 @@ type Engine interface {
 	// Sign returns a CAdES signature of the level asked for that carries the
 	// content inside it, with that level; it fails rather than sign below it.
 	Sign(content []byte, key *Key, profile Profile, timestamp *Timestamp) ([]byte, Profile, error)
+	// SignDigest returns a detached CAdES-BES signature over a SHA-256 digest
+	// the portal computed, such as the digest of a KEP message.
+	SignDigest(digest []byte, key *Key) ([]byte, error)
 }
 
 // Native signs with the bridge's own CAdES code and the card's PKCS#11 driver.
@@ -111,4 +114,8 @@ func (Native) Sign(content []byte, key *Key, profile Profile, timestamp *Timesta
 	}
 
 	return signature, reached, nil
+}
+
+func (Native) SignDigest(digest []byte, key *Key) ([]byte, error) {
+	return cades.SignDigest(digest, key.Certificate, key.Signer, cades.Options{})
 }

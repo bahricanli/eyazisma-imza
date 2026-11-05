@@ -67,7 +67,8 @@ type signedData struct {
 
 type encapsulatedContentInfo struct {
 	ContentType asn1.ObjectIdentifier
-	Content     []byte `asn1:"explicit,tag:0"`
+	// Left out (nil) in a detached signature.
+	Content []byte `asn1:"explicit,tag:0,optional"`
 }
 
 type signerInfo struct {
@@ -111,6 +112,23 @@ type issuerSerial struct {
 // DER-encoded signature. The signer gets the SHA-256 digest of the signed
 // attributes, as a smart card expects.
 func Sign(content []byte, certificate *x509.Certificate, signer crypto.Signer, options Options) ([]byte, error) {
+	digest := sha256.Sum256(content)
+
+	return sign(content, digest[:], certificate, signer, options)
+}
+
+// SignDigest returns a detached signature over content the caller hashed with
+// SHA-256: the content is not in the signature. A KEP provider hands out such
+// a digest of the message it built.
+func SignDigest(digest []byte, certificate *x509.Certificate, signer crypto.Signer, options Options) ([]byte, error) {
+	if len(digest) != sha256.Size {
+		return nil, errors.New("cades: özet SHA-256 olmalı")
+	}
+
+	return sign(nil, digest, certificate, signer, options)
+}
+
+func sign(content, contentDigest []byte, certificate *x509.Certificate, signer crypto.Signer, options Options) ([]byte, error) {
 	if certificate == nil || signer == nil {
 		return nil, errors.New("cades: sertifika ve anahtar gerekli")
 	}
@@ -125,7 +143,7 @@ func Sign(content []byte, certificate *x509.Certificate, signer crypto.Signer, o
 		signingTime = time.Now()
 	}
 
-	signedAttributes, err := signedAttributes(content, certificate, signingTime)
+	signedAttributes, err := signedAttributes(contentDigest, certificate, signingTime)
 	if err != nil {
 		return nil, err
 	}
@@ -187,14 +205,13 @@ func Sign(content []byte, certificate *x509.Certificate, signer crypto.Signer, o
 }
 
 // signedAttributes returns the content of the SET OF signed attributes.
-func signedAttributes(content []byte, certificate *x509.Certificate, signingTime time.Time) ([]byte, error) {
+func signedAttributes(contentDigest []byte, certificate *x509.Certificate, signingTime time.Time) ([]byte, error) {
 	contentType, err := asn1.Marshal(oidData)
 	if err != nil {
 		return nil, err
 	}
 
-	contentDigest := sha256.Sum256(content)
-	messageDigest, err := asn1.Marshal(contentDigest[:])
+	messageDigest, err := asn1.Marshal(contentDigest)
 	if err != nil {
 		return nil, err
 	}

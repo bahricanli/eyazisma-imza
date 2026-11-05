@@ -16,16 +16,19 @@ import (
 
 // Session is what the portal wants signed and how.
 type Session struct {
-	Organization string     `json:"organization"`
-	DocumentNo   string     `json:"document_no"`
-	Subject      string     `json:"subject"`
-	Step         string     `json:"step"`
-	StepLabel    string     `json:"step_label"`
-	Filename     string     `json:"filename"`
-	Content      string     `json:"content"`
-	Profile      string     `json:"profile"`
-	Timestamp    *Timestamp `json:"timestamp"`
-	ExpiresAt    string     `json:"expires_at"`
+	Organization string `json:"organization"`
+	DocumentNo   string `json:"document_no"`
+	Subject      string `json:"subject"`
+	Step         string `json:"step"`
+	StepLabel    string `json:"step_label"`
+	Filename     string `json:"filename"`
+	Content      string `json:"content"`
+	// Digest, when set, is the base64 SHA-256 digest of content the portal
+	// keeps; the signature is then detached and Content is empty.
+	Digest    string     `json:"digest"`
+	Profile   string     `json:"profile"`
+	Timestamp *Timestamp `json:"timestamp"`
+	ExpiresAt string     `json:"expires_at"`
 }
 
 // Timestamp is the time-stamp account the portal lends for this signature.
@@ -90,6 +93,21 @@ func (s *Session) Document() ([]byte, error) {
 	}
 
 	return content, nil
+}
+
+// ContentDigest returns the digest to sign detached, or nil when the portal
+// sent the content itself.
+func (s *Session) ContentDigest() ([]byte, error) {
+	if s.Digest == "" {
+		return nil, nil
+	}
+
+	digest, err := base64.StdEncoding.DecodeString(s.Digest)
+	if err != nil || len(digest) != 32 {
+		return nil, errors.New("portalın gönderdiği özet SHA-256 değil")
+	}
+
+	return digest, nil
 }
 
 // Submit returns the signature; the link is spent when the portal accepts it.

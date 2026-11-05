@@ -216,6 +216,26 @@ func (s *Server) sign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	digest, err := session.ContentDigest()
+	if err != nil {
+		fail(w, http.StatusBadGateway, err.Error())
+
+		return
+	}
+
+	if digest != nil {
+		signature, err := s.Engine.SignDigest(digest, key)
+		if err != nil {
+			fail(w, http.StatusUnprocessableEntity, err.Error())
+
+			return
+		}
+
+		s.submit(w, input.Link, signature, key, engine.ProfileBES)
+
+		return
+	}
+
 	document, err := session.Document()
 	if err != nil {
 		fail(w, http.StatusBadGateway, err.Error())
@@ -235,7 +255,11 @@ func (s *Server) sign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := s.Portal.Submit(input.Link, signature)
+	s.submit(w, input.Link, signature, key, reached)
+}
+
+func (s *Server) submit(w http.ResponseWriter, link string, signature []byte, key *engine.Key, reached engine.Profile) {
+	result, err := s.Portal.Submit(link, signature)
 	if err != nil {
 		fail(w, http.StatusBadGateway, err.Error())
 
